@@ -16,6 +16,7 @@ Old_code/
 include/
 *.env
 pyvenv.cfg
+*.json
 
 # VS Code settings
 .vscode/
