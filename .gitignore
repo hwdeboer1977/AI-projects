@@ -11,6 +11,7 @@ env/
 bin/
 lib/
 lib64/
+debug/
 /lib64/
 output*/
 /output*
