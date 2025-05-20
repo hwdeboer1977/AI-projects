@@ -36,6 +36,7 @@ def get_url_content_playwright_beincrypto(url):
             container = soup.select_one("div.entry-content")
             paragraphs = container.find_all("p") if container else []
 
+            # For now we limit to 10 paragraphs
             return "\n".join(p.get_text(strip=True) for p in paragraphs[:10]) if paragraphs else "⚠️ No entry-content <p> tags found"
 
     except Exception as e:
@@ -88,7 +89,7 @@ if __name__ == "__main__":
     for i, a in enumerate(articles, 1):
         print(f"[{i}] {a['title']}")
         print(f"🕒 Published: {a['published']}")
-        print(f"📄 Full content: {a['url_content'][:300]}...")
+        print(f"📄 Full content: {a['url_content'][:300]}...") # Limits to 300 characters
         print(f"🔗 {a['url']}")
         print("-" * 60)
 

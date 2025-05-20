@@ -12,6 +12,8 @@ bin/
 lib/
 lib64/
 /lib64/
+output*/
+/output*
 Old_code/
 include/
 *.env

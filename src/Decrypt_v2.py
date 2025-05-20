@@ -34,7 +34,7 @@ def get_url_content_playwright_stealth(url):
             container = soup.select_one("div.post-content")
             paragraphs = container.find_all("p") if container else []
 
-            return "\n".join(p.get_text(strip=True) for p in paragraphs[:8]) if paragraphs else "⚠️ No post-content <p> tags found"
+            return "\n".join(p.get_text(strip=True) for p in paragraphs[:10]) if paragraphs else "⚠️ No post-content <p> tags found"
 
     except Exception as e:
         return f"❌ Stealth Playwright error: {e}"

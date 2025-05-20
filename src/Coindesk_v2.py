@@ -73,7 +73,7 @@ def fetch_coindesk_last_24h():
         if content_list and isinstance(content_list, list) and "value" in content_list[0]:
             soup = BeautifulSoup(content_list[0]["value"], "html.parser")
             paragraphs = soup.find_all("p")
-            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:8])
+            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:10])
 
         results.append({
             "title": title,
