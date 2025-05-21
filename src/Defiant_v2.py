@@ -1,17 +1,24 @@
-import feedparser
-from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
-import undetected_chromedriver as uc
-import time
-import json
-import os
+# The Defiant News Scraper
+# Method: RSS feed for article metadata + Headless browser scraping with undetected-chromedriver (UDC)
+# - RSS provides title, publish time, summary, and article link
+# - UDC loads article URL and scrapes content from <article><p> tags
+# - Scrolls the page to ensure full content is loaded
+# - Optionally dumps HTML of the last article (debug mode)
 
-# Format today's date
+import feedparser  # Parses RSS feeds
+from bs4 import BeautifulSoup  # Parses HTML
+from datetime import datetime, timedelta  # For date filtering
+import undetected_chromedriver as uc  # Headless browser (stealth)
+import time  # For scrolling and delays
+import json  # Save as JSON
+import os  # For debug output
+
+# Generate filename based on today's date
 today_str = datetime.now().strftime("%m_%d_%Y")
-
-# Create dated filename
 filename = f"Defiant_articles_24h_{today_str}.json"
 
+
+# Scrapes full article content from a given URL using undetected_chromedriver
 def get_url_content_udc(url, debug=False):
     try:
         options = uc.ChromeOptions()
@@ -26,6 +33,7 @@ def get_url_content_udc(url, debug=False):
         driver.get(url)
         time.sleep(5)
 
+         # Scroll down gradually to load lazy content
         for _ in range(3):
             driver.execute_script("window.scrollBy(0, document.body.scrollHeight / 3)")
             time.sleep(1)
@@ -33,11 +41,13 @@ def get_url_content_udc(url, debug=False):
         html = driver.page_source
         driver.quit()
 
+         # Optionally save the raw HTML for debugging
         if debug:
             os.makedirs("debug", exist_ok=True)
             with open("debug/latest_defiant_article.html", "w", encoding="utf-8") as f:
                 f.write(html)
 
+        # Extract paragraphs from <article>
         soup = BeautifulSoup(html, "html.parser")
         paragraphs = soup.select("article p")
         paragraph_count = len(paragraphs)
@@ -49,6 +59,7 @@ def get_url_content_udc(url, debug=False):
     except Exception as e:
         return f"❌ UDC error: {e}"
 
+# Fetch articles from the RSS feed and scrape full content for those from the last 24h
 def fetch_defiant_articles_24h(debug=False):
     feed_url = "https://thedefiant.io/feed/"
     feed = feedparser.parse(feed_url)
@@ -63,10 +74,12 @@ def fetch_defiant_articles_24h(debug=False):
         if not published_parsed:
             continue
 
+        # Parse publish timestamp
         published_dt = datetime.fromtimestamp(time.mktime(published_parsed))
         if published_dt < cutoff:
             continue
 
+        # Extract basic metadata
         title = entry.get("title", "").strip()
         link = entry.get("link", "").strip()
         raw_description = entry.get("summary", "") or entry.get("description", "")
@@ -88,16 +101,19 @@ def fetch_defiant_articles_24h(debug=False):
 
     return articles
 
+# 🚀 Main runner
 if __name__ == "__main__":
     DEBUG = False  # Set True to dump HTML of last article
     articles = fetch_defiant_articles_24h(debug=DEBUG)
 
+    # Info for console
     for i, a in enumerate(articles, 1):
         print(f"\n[{i}] {a['title']}")
         print(f" {a['published']}")
         print(f" Preview:\n{a['url_content'][:400]}...\n")
         print(f"Paragraphs: {a['paragraph_count']}")
 
+    # Save results to JSON file
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(articles, f, ensure_ascii=False, indent=2)
 

@@ -1,70 +1,56 @@
+# CoinDesk News Scraper
+# Method: RSS-based parsing with hybrid techniques
+# - Uses requests + xml.etree.ElementTree for raw <description> fields
+# - Uses feedparser for easy access to metadata like title, link, and content:encoded
+# - Does not use browser scraping — 100% XML/RSS-based
+
 import feedparser # Parses RSS feeds and handles common edge cases like CDATA, namespaces
-import requests # Used to fetch the raw RSS XML for ET parsing
-import xml.etree.ElementTree as ET # Low-level XML parsing to extract <description>
+import requests # Fetches raw XML content from the feed URL
+import xml.etree.ElementTree as ET # Parses low-level <item> and <description> elements
 import re
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup # Cleans HTML inside <description> and <content:encoded>
 import json
 from datetime import datetime, timedelta
 import time
 
 
 
-# Use xml.etree.ElementTree (ET) – to parse the RSS feed
-# playwright – to extract full content (url_content) by visiting each article link
-# BeautifulSoup – to parse the HTML returned by playwright and extract the first few <p> paragraphs
-# BeautifulSoup Ensures all content (e.g., full article text) is rendered
-
-
-# feedparser: title + url
-# ElementTree from raw XML: Guarantees extraction from <description> to fill POST
-# feedparser.content[0]['value']: HTML-parsed full article body to fill URL_CONTENT
-
-# feedparser for RSS: high level, tolerant
-# Previous Script (ET + playwright): low level, more control
-
-# feedparser extracts post from <description>/<summary>
-# Previous Script (ET + playwright): Same, but sometimes CDATA may be missed
-
-# feedparser does not support JavaScript-rendered pages
-# Previous Script (ET + playwright): supports JavaScript-rendered pages via playwright
-
-# Format today's date
+# Format today's date to use in output file name
 today_str = datetime.now().strftime("%m_%d_%Y")
-
-# Create dated filename
 filename = f"Coindesk_articles_24h_{today_str}.json"
 
+# Main function to fetch and filter CoinDesk articles from the past 24 hours
 def fetch_coindesk_last_24h():
     rss_url = "https://feeds.feedburner.com/CoinDesk"
     headers = {"User-Agent": "Mozilla/5.0"}
     results = []
 
-    # Time filter setup
+     # Setup: current UTC time and 24h cutoff
     now = datetime.utcnow()
     cutoff = now - timedelta(days=1)
 
-    # STEP 1: Raw XML parsing for <description>
+    # STEP 1: Raw XML parsing using ElementTree (for grabbing <description>)
     xml_raw = requests.get(rss_url, headers=headers).content
     xml_root = ET.fromstring(xml_raw)
     raw_items = xml_root.findall(".//item")
 
-    # STEP 2: Parse feed with feedparser for easy access
+     # STEP 2: Parse feed using feedparser for easy metadata access
     parsed_feed = feedparser.parse(xml_raw)
 
-    # STEP 3: Filter + extract data
+    # STEP 3: Process entries and filter by publish time
     for entry in parsed_feed.entries:
         published_parsed = entry.get("published_parsed")
         if not published_parsed:
-            continue
+            continue # Skip if no timestamp
 
         published_dt = datetime.fromtimestamp(time.mktime(published_parsed))
         if published_dt < cutoff:
-            continue  # Skip old articles
+            continue  # Skip articles older than 24h
 
         title = entry.get("title", "").strip()
         link = entry.get("link", "").strip()
 
-        # Match raw <item> to get <description>
+         # Match against raw XML <item> to extract <description> text
         raw_post = ""
         for item in raw_items:
             item_title = item.findtext("title", default="").strip()
@@ -73,14 +59,15 @@ def fetch_coindesk_last_24h():
                 raw_post = BeautifulSoup(raw_description, "html.parser").get_text(strip=True)
                 break
 
-        # Extract full content from <content:encoded>
+         # Extract full article body from <content:encoded> field
         url_content = ""
+        paragraph_count = 0  # Default if no content found
         content_list = entry.get("content", [])
         if content_list and isinstance(content_list, list) and "value" in content_list[0]:
             soup = BeautifulSoup(content_list[0]["value"], "html.parser")
             paragraphs = soup.find_all("p")
             paragraph_count = len(paragraphs)
-            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:12])
+            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:12]) # Limit to 12 paragraphs
 
         results.append({
             "title": title,
@@ -100,6 +87,7 @@ def fetch_coindesk_last_24h():
 if __name__ == "__main__":
     articles = fetch_coindesk_last_24h()
 
+     # Display in console
     for i, a in enumerate(articles, 1):
         print(f"[{i}] {a['title']}")
         print(f"Published: {a['published']}")
@@ -109,7 +97,7 @@ if __name__ == "__main__":
         print(f"{a['url']}")
         print("-" * 60)
 
-
+    # Save to file
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(articles, f, ensure_ascii=False, indent=2)
 

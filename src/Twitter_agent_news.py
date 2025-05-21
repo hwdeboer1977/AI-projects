@@ -1,3 +1,12 @@
+# Twitter News Accounts Scraper (last 24h)
+# Method: Twitter API v2 + Bearer Token
+# - Fetches recent tweets from major crypto news outlet Twitter handles
+# - Filters for tweets posted in the last 24 hours using `start_time`
+# - Extracts tweet title (first 12 words), full post, views, retweets, timestamp, and tweet URL
+# - Saves each user's tweets to a separate JSON file
+# - Requires Twitter API Bearer token from .env
+
+
 import requests
 import datetime
 import json
@@ -16,9 +25,6 @@ usernames = [
 ]
 
 
-
-
-
 # 2. Load API key from .env
 load_dotenv()
 BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
@@ -29,15 +35,18 @@ if not BEARER_TOKEN:
 now = datetime.datetime.utcnow().replace(microsecond=0)
 start_time = (now - datetime.timedelta(days=1)).isoformat() + "Z"
 
+# Create HTTP headers for Twitter API
 def create_headers(token):
     return {"Authorization": f"Bearer {token}"}
 
+# Convert username to Twitter user ID (required for tweet lookup)
 def get_user_id(username):
     url = f"https://api.twitter.com/2/users/by/username/{username}"
     response = requests.get(url, headers=create_headers(BEARER_TOKEN))
     response.raise_for_status()
     return response.json()["data"]["id"]
 
+# Fetch recent tweets from a user ID using Twitter API v2
 def get_recent_tweets(user_id, max_results=50):
     url = f"https://api.twitter.com/2/users/{user_id}/tweets"
     params = {
@@ -50,9 +59,10 @@ def get_recent_tweets(user_id, max_results=50):
     response.raise_for_status()
     return response.json().get("data", [])
 
+# Extract relevant tweet fields into a structured format
 def extract_fields(tweet, username):
     post = tweet["text"]
-    title = " ".join(post.split()[:12])
+    title = " ".join(post.split()[:12]) # Preview title: first 12 words
     tweet_id = tweet["id"]
     url = f"https://x.com/{username}/status/{tweet_id}"
     metrics = tweet.get("public_metrics", {})
@@ -66,7 +76,7 @@ def extract_fields(tweet, username):
         "created_at": tweet["created_at"]
     }
 
-# 5. Main
+# Main execution loop
 if __name__ == "__main__":
     for username in usernames:
         print(f"\n Fetching tweets for: {username}")
@@ -75,6 +85,7 @@ if __name__ == "__main__":
             tweets = get_recent_tweets(user_id)
             results = [extract_fields(tweet, username) for tweet in tweets]
 
+            # Console preview
             for i, r in enumerate(results, 1):
                 print(f"[{i}] {r['title']}")
                 print(f" {r['post'][:80]}...")
@@ -85,6 +96,7 @@ if __name__ == "__main__":
             today_str = datetime.datetime.now().strftime("%m_%d_%Y")
             out_file = f"Twitter_{username}_24h_{today_str}.json"
 
+            # Save each account's tweets to a daily JSON file
             with open(out_file, "w", encoding="utf-8") as f:
                 json.dump(results, f, ensure_ascii=False, indent=2)
 
