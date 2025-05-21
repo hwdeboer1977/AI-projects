@@ -7,7 +7,13 @@ import os
 
 BASE_URL = "https://blockworks.co"
 NEWS_URL = "https://blockworks.co/news"
-CUTOFF_TIME = datetime.now(timezone.utc) - timedelta(days=1)  # ✅ fixed for offset-aware comparison
+CUTOFF_TIME = datetime.now(timezone.utc) - timedelta(days=1)  # fixed for offset-aware comparison
+
+# Format today's date
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Create dated filename
+filename = f"Blockworks_articles_24h_{today_str}.json"
 
 def get_article_data(url, debug=False):
     try:
@@ -19,7 +25,7 @@ def get_article_data(url, debug=False):
         options.add_argument("--lang=en-US,en;q=0.9")
 
         driver = uc.Chrome(options=options)
-        print(f"📰 Visiting: {url}")
+        print(f"Visiting: {url}")
         driver.get(url)
         time.sleep(5)
         html = driver.page_source
@@ -42,7 +48,7 @@ def get_article_data(url, debug=False):
             except:
                 published_dt = None
 
-        # 📌 Skip if older than 24h
+        # Skip if older than 24h
         if not published_dt or published_dt < CUTOFF_TIME:
             print(f"⏱ Skipped: older than 24h or no time found → {published_dt}")
             return None
@@ -51,6 +57,7 @@ def get_article_data(url, debug=False):
         post = meta_desc["content"].strip() if meta_desc and meta_desc.has_attr("content") else ""
 
         paragraphs = soup.select("article p")
+        paragraph_count = len(paragraphs)
         url_content = "\n".join(p.get_text(strip=True) for p in paragraphs) if paragraphs else "⚠️ No <p> tags found"
 
         return {
@@ -58,7 +65,8 @@ def get_article_data(url, debug=False):
             "source": "Blockworks",
             "published": published_dt.isoformat(),
             "post": post,
-            "url_content": url_content
+            "url_content": url_content,
+            "paragraph_count": paragraph_count
         }
 
     except Exception as e:
@@ -78,7 +86,7 @@ def get_recent_blockworks_urls():
     options.add_argument("--lang=en-US,en;q=0.9")
 
     driver = uc.Chrome(options=options)
-    print(f"🌐 Loading news page: {NEWS_URL}")
+    print(f"Loading news page: {NEWS_URL}")
     driver.get(NEWS_URL)
     time.sleep(5)
     html = driver.page_source
@@ -96,10 +104,10 @@ def get_recent_blockworks_urls():
             full_url = BASE_URL + href
             article_urls.append(full_url)
 
-    print(f"✅ Found {len(article_urls)} unique article links")
+    print(f"Found {len(article_urls)} unique article links")
     return article_urls
 
-# ✅ Run the full job
+# Run the full job
 if __name__ == "__main__":
     DEBUG = False
     urls = get_recent_blockworks_urls()
@@ -107,11 +115,15 @@ if __name__ == "__main__":
 
     for url in urls:
         article = get_article_data(url, debug=DEBUG)
-        if article:
-            articles.append(article)
+        
+        if article is None:
+            print("Stopping — article is older than 24h.")
+            break  # Stop visiting further URLs
+
+        articles.append(article)
         time.sleep(1)
 
-    with open("blockworks_24h_articles.json", "w", encoding="utf-8") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         json.dump(articles, f, ensure_ascii=False, indent=2)
 
-    print(f"\n✅ Saved {len(articles)} articles to blockworks_24h_articles.json")
+    print(f"\n Saved {len(articles)} articles to {filename}")

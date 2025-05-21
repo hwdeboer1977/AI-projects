@@ -5,7 +5,13 @@ from datetime import datetime, timedelta
 import time
 import json
 
-# 🕵️ Scrape short summary and full content via Playwright
+# Format today's date
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Create dated filename
+filename = f"Cointelegraph_articles_24h_{today_str}.json"
+
+# Scrape short summary and full content via Playwright
 def get_cointelegraph_post_and_content(url):
     try:
         with sync_playwright() as p:
@@ -26,15 +32,16 @@ def get_cointelegraph_post_and_content(url):
             # Get full content from article paragraphs
             content_container = soup.select_one("div.post-content.relative")
             paragraphs = content_container.find_all("p") if content_container else []
-            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:10]) if paragraphs else "⚠️ No <p> tags found"
+            paragraph_count = len(paragraphs)
+            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:12]) if paragraphs else "⚠️ No <p> tags found"
 
-            return post, url_content
+            return post, url_content, paragraph_count
 
     except Exception as e:
         print(f"❌ Error fetching article content from {url} → {e}")
         return "", ""
 
-# 📡 Fetch articles from RSS and filter last 24h
+# Fetch articles from RSS and filter last 24h
 def fetch_cointelegraph_last_24h():
     feed_url = "https://cointelegraph.com/rss"
     feed = feedparser.parse(feed_url)
@@ -55,8 +62,8 @@ def fetch_cointelegraph_last_24h():
         title = entry.get("title", "").strip()
         url = entry.get("link", "").strip()
 
-        print(f"🕒 [{published_dt}] Scraping: {title}")
-        post, url_content = get_cointelegraph_post_and_content(url)
+        print(f"[{published_dt}] Scraping: {title}")
+        post, url_content, paragraph_count = get_cointelegraph_post_and_content(url)
 
         articles.append({
             "title": title,
@@ -65,25 +72,28 @@ def fetch_cointelegraph_last_24h():
             "views": None,
             "reposts": None,
             "url_content": url_content,
+            "paragraph_count": paragraph_count,
             "source": "Cointelegraph",
             "published": published_dt.isoformat()
         })
 
-    return articles
+    return articles, paragraph_count
 
-# ✅ Run + Save
+# Run + Save
 if __name__ == "__main__":
-    articles = fetch_cointelegraph_last_24h()
+    articles, paragraph_count = fetch_cointelegraph_last_24h()
 
     for i, a in enumerate(articles, 1):
         print(f"[{i}] {a['title']}")
-        print(f"🕒 Published: {a['published']}")
-        print(f"📰 Post: {a['post'][:100]}...")
-        print(f"📄 Content: {a['url_content'][:300]}...")
-        print(f"🔗 {a['url']}")
+        print(f"Published: {a['published']}")
+        print(f"Post: {a['post'][:100]}...")
+        print(f"Content: {a['url_content'][:500]}...")
+        print(f"Paragraphs: {a['paragraph_count']}")
+        print(f" {a['url']}")
         print("-" * 60)
 
-    with open("cointelegraph_24h_articles.json", "w", encoding="utf-8") as f:
+
+    with open(filename, "w", encoding="utf-8") as f:
         json.dump(articles, f, ensure_ascii=False, indent=2)
 
-    print(f"\n✅ Saved {len(articles)} articles to cointelegraph_24h_articles.json")
+    print(f"\n Saved {len(articles)} articles to {filename}")

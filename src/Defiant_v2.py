@@ -6,6 +6,12 @@ import time
 import json
 import os
 
+# Format today's date
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Create dated filename
+filename = f"Defiant_articles_24h_{today_str}.json"
+
 def get_url_content_udc(url, debug=False):
     try:
         options = uc.ChromeOptions()
@@ -16,7 +22,7 @@ def get_url_content_udc(url, debug=False):
         options.add_argument("--lang=en-US,en;q=0.9")
 
         driver = uc.Chrome(options=options)
-        print(f"🌐 Visiting: {url}")
+        print(f"Visiting: {url}")
         driver.get(url)
         time.sleep(5)
 
@@ -34,8 +40,11 @@ def get_url_content_udc(url, debug=False):
 
         soup = BeautifulSoup(html, "html.parser")
         paragraphs = soup.select("article p")
+        paragraph_count = len(paragraphs)
 
-        return "\n".join(p.get_text(strip=True) for p in paragraphs) if paragraphs else "⚠️ No <p> tags found"
+
+        url_content = "\n".join(p.get_text(strip=True) for p in paragraphs) if paragraphs else "⚠️ No post-content <p> tags found"
+        return url_content, paragraph_count
 
     except Exception as e:
         return f"❌ UDC error: {e}"
@@ -64,14 +73,15 @@ def fetch_defiant_articles_24h(debug=False):
         soup = BeautifulSoup(raw_description, "html.parser")
         post = soup.get_text(strip=True)
 
-        print(f"🕒 [{published_dt}] Fetching: {title}")
-        url_content = get_url_content_udc(link, debug=debug)
+        print(f"[{published_dt}] Fetching: {title}")
+        url_content, paragraph_count = get_url_content_udc(link, debug=debug)
 
         articles.append({
             "title": title,
             "post": post,
             "url": link,
             "url_content": url_content,
+            "paragraph_count": paragraph_count,
             "source": "The Defiant",
             "published": published_dt.isoformat()
         })
@@ -84,10 +94,11 @@ if __name__ == "__main__":
 
     for i, a in enumerate(articles, 1):
         print(f"\n[{i}] {a['title']}")
-        print(f"🕒 {a['published']}")
-        print(f"📄 Preview:\n{a['url_content'][:400]}...\n")
+        print(f" {a['published']}")
+        print(f" Preview:\n{a['url_content'][:400]}...\n")
+        print(f"Paragraphs: {a['paragraph_count']}")
 
-    with open("defiant_articles_24h.json", "w", encoding="utf-8") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         json.dump(articles, f, ensure_ascii=False, indent=2)
 
-    print(f"✅ Saved {len(articles)} articles to defiant_articles_24h.json")
+    print(f"\n Saved {len(articles)} articles to {filename}")

@@ -5,11 +5,19 @@ from dateutil import parser
 import json
 import time
 
+
+# Format today's date
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Create dated filename
+filename = f"Bankless_articles_24h_{today_str}.json"
+
 def scrape_bankless_articles(limit=5):
     results = []
     seen = set()
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(days=1)
+
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -39,7 +47,7 @@ def scrape_bankless_articles(limit=5):
             article_html = article_page.content()
             article_soup = BeautifulSoup(article_html, "html.parser")
 
-            # ✅ Timestamp
+            # Timestamp
             published_dt = None
             meta_time = article_soup.find("meta", {"property": "article:published_time"})
             if meta_time and meta_time.get("content"):
@@ -59,17 +67,18 @@ def scrape_bankless_articles(limit=5):
                 article_page.close()
                 continue
 
-            # 📝 Summary
+            # Summary
             meta_desc = article_soup.find("meta", {"name": "description"})
             post = meta_desc.get("content", "").strip() if meta_desc else ""
             if not post:
                 first_para = article_soup.select_one("article p")
                 post = first_para.get_text(strip=True) if first_para else ""
 
-            # 📄 Full content
+            # Full content
             prose = article_soup.select_one("article") or article_soup.select_one("div.prose")
             paragraphs = prose.find_all("p") if prose else []
-            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:8]) or "⚠️ No content found"
+            paragraph_count = len(paragraphs)
+            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:12]) or "⚠️ No content found"
 
             article_page.close()
 
@@ -80,6 +89,7 @@ def scrape_bankless_articles(limit=5):
                 "views": None,
                 "reposts": None,
                 "url_content": url_content,
+                "paragraph_count": paragraph_count,  
                 "source": "Bankless",
                 "published": published_dt.isoformat()
             })
@@ -90,19 +100,20 @@ def scrape_bankless_articles(limit=5):
         browser.close()
     return results
 
-# ✅ Run & Save
+# Run & Save
 if __name__ == "__main__":
     articles = scrape_bankless_articles(limit=10)
 
     for i, a in enumerate(articles, 1):
         print(f"[{i}] {a['title']}")
-        print(f"🕒 Published: {a['published']}")
-        print(f"📰 Summary: {a['post'][:100]}...")
-        print(f"📄 Content: {a['url_content'][:300]}...")
-        print(f"🔗 {a['url']}")
+        print(f"Published: {a['published']}")
+        print(f"Summary: {a['post'][:100]}...")
+        print(f"Content: {a['url_content'][:500]}...")
+        print(f"Paragraphs: {a['paragraph_count']}")
+        print(f"{a['url']}")
         print("-" * 60)
 
-    with open("bankless_articles_24h.json", "w", encoding="utf-8") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         json.dump(articles, f, ensure_ascii=False, indent=2)
 
-    print(f"\n✅ Saved {len(articles)} articles to bankless_articles_24h.json")
+    print(f"\n Saved {len(articles)} articles to {filename}")

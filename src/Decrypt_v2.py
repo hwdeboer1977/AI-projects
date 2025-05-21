@@ -6,7 +6,13 @@ from datetime import datetime, timedelta
 import time
 import json
 
-# 🚀 Full content extractor using Playwright
+# Format today's date
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Create dated filename
+filename = f"Decrypt_articles_24h_{today_str}.json"
+
+# Full content extractor using Playwright
 def get_url_content_playwright_stealth(url):
     try:
         with sync_playwright() as p:
@@ -33,13 +39,15 @@ def get_url_content_playwright_stealth(url):
             soup = BeautifulSoup(html, "html.parser")
             container = soup.select_one("div.post-content")
             paragraphs = container.find_all("p") if container else []
+            paragraph_count = len(paragraphs)
 
-            return "\n".join(p.get_text(strip=True) for p in paragraphs[:10]) if paragraphs else "⚠️ No post-content <p> tags found"
+            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:12]) if paragraphs else "⚠️ No post-content <p> tags found"
+            return url_content, paragraph_count
 
     except Exception as e:
         return f"❌ Stealth Playwright error: {e}"
 
-# 📡 RSS parsing and 24-hour filtering
+# RSS parsing and 24-hour filtering
 def fetch_decrypt_last_24h():
     feed_url = "https://decrypt.co/feed"
     feed = feedparser.parse(feed_url)
@@ -63,8 +71,8 @@ def fetch_decrypt_last_24h():
         soup = BeautifulSoup(raw_description, "html.parser")
         post = soup.get_text(strip=True)
 
-        print(f"🕒 [{published_dt}] Fetching full article: {title}")
-        url_content = get_url_content_playwright_stealth(link)
+        print(f"[{published_dt}] Fetching full article: {title}")
+        url_content, paragraph_count = get_url_content_playwright_stealth(link)
 
         articles.append({
             "title": title,
@@ -73,25 +81,27 @@ def fetch_decrypt_last_24h():
             "views": None,
             "reposts": None,
             "url_content": url_content,
+            "paragraph_count": paragraph_count,
             "source": "Decrypt",
             "published": published_dt.isoformat()
         })
 
     return articles
 
-# ✅ Run & save
+# Run & save
 if __name__ == "__main__":
     articles = fetch_decrypt_last_24h()
 
     for i, a in enumerate(articles, 1):
         print(f"[{i}] {a['title']}")
-        print(f"🕒 Published: {a['published']}")
-        print(f"📰 Summary: {a['post'][:100]}...")
-        print(f"📄 Full content: {a['url_content'][:300]}...")
-        print(f"🔗 {a['url']}")
+        print(f"Published: {a['published']}")
+        print(f"Summary: {a['post'][:100]}...")
+        print(f"Full content: {a['url_content'][:500]}...")
+        print(f"Paragraphs: {a['paragraph_count']}")
+        print(f" {a['url']}")
         print("-" * 60)
 
-    with open("decrypt_24h_articles.json", "w", encoding="utf-8") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         json.dump(articles, f, ensure_ascii=False, indent=2)
 
-    print(f"\n✅ Saved {len(articles)} recent articles to decrypt_24h_articles.json")
+    print(f"\n Saved {len(articles)} articles to {filename}")

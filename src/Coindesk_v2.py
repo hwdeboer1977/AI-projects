@@ -28,12 +28,18 @@ import time
 # feedparser does not support JavaScript-rendered pages
 # Previous Script (ET + playwright): supports JavaScript-rendered pages via playwright
 
+# Format today's date
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Create dated filename
+filename = f"Coindesk_articles_24h_{today_str}.json"
+
 def fetch_coindesk_last_24h():
     rss_url = "https://feeds.feedburner.com/CoinDesk"
     headers = {"User-Agent": "Mozilla/5.0"}
     results = []
 
-    # ⏱️ Time filter setup
+    # Time filter setup
     now = datetime.utcnow()
     cutoff = now - timedelta(days=1)
 
@@ -73,7 +79,8 @@ def fetch_coindesk_last_24h():
         if content_list and isinstance(content_list, list) and "value" in content_list[0]:
             soup = BeautifulSoup(content_list[0]["value"], "html.parser")
             paragraphs = soup.find_all("p")
-            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:10])
+            paragraph_count = len(paragraphs)
+            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:12])
 
         results.append({
             "title": title,
@@ -82,25 +89,28 @@ def fetch_coindesk_last_24h():
             "views": None,
             "reposts": None,
             "url_content": url_content,
+            "paragraph_count": paragraph_count,
             "source": "CoinDesk",
             "published": published_dt.isoformat()
         })
 
     return results
 
-# 🚀 Main runner
+# Main runner
 if __name__ == "__main__":
     articles = fetch_coindesk_last_24h()
 
     for i, a in enumerate(articles, 1):
         print(f"[{i}] {a['title']}")
-        print(f"🕒 Published: {a['published']}")
-        print(f"📰 Summary: {a['post'][:100]}...")
-        print(f"📄 Full Content: {a['url_content'][:300]}...")
-        print(f"🔗 {a['url']}")
+        print(f"Published: {a['published']}")
+        print(f"Summary: {a['post'][:100]}...")
+        print(f"Full Content: {a['url_content'][:500]}...")
+        print(f"Paragraphs: {a['paragraph_count']}")
+        print(f"{a['url']}")
         print("-" * 60)
 
-    with open("coindesk_24h_articles.json", "w", encoding="utf-8") as f:
+
+    with open(filename, "w", encoding="utf-8") as f:
         json.dump(articles, f, ensure_ascii=False, indent=2)
 
-    print(f"\n✅ Saved {len(articles)} articles to coindesk_24h_articles.json")
+    print(f"\n Saved {len(articles)} articles to {filename}")

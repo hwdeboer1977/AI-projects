@@ -10,6 +10,7 @@ load_dotenv()
 SCRAPER_API_KEY = os.getenv("SCRAPER_API")
 
 
+
 # Target article
 url = "https://www.theblock.co/post/354709/alchemy-acquires-solana-infrastructure-provider-dexterlab-as-it-continues-expansion-beyond-ethereum"
 
@@ -21,7 +22,7 @@ def get_article_scraperapi(url, debug=False):
             #"render": "true"  # optional — enables JS rendering
         }
 
-        print(f"🌐 Fetching via ScraperAPI: {url}")
+        print(f"Fetching via ScraperAPI: {url}")
         r = requests.get("https://api.scraperapi.com", params=payload, timeout=30)
         r.raise_for_status()
         html = r.text
@@ -33,11 +34,13 @@ def get_article_scraperapi(url, debug=False):
 
         soup = BeautifulSoup(html, "html.parser")
         paragraphs = soup.select("article p")
+        paragraph_count = len(paragraphs)
 
         article_text = "\n".join(p.get_text(strip=True) for p in paragraphs) if paragraphs else "⚠️ No <p> tags found"
         return {
             "url": url,
             "url_content": article_text,
+            "paragraph_count": paragraph_count,
             "source": "The Block"
         }
 
@@ -48,15 +51,17 @@ def get_article_scraperapi(url, debug=False):
             "source": "The Block"
         }
 
-# ✅ Run
+# Run
 if __name__ == "__main__":
     DEBUG = True
     article = get_article_scraperapi(url, debug=DEBUG)
 
-    print(f"\n📄 Article Content Preview:\n{article['url_content'][:800]}...\n")
-    print(f"🔗 {article['url']}\n")
+    print(f"\n Article Content Preview:\n{article['url_content'][:800]}...\n")
+    print(f" {article['url']}\n")
+    print(f"Paragraphs: {article['paragraph_count']}")
+
 
     with open("theblock_article_scraperapi.json", "w", encoding="utf-8") as f:
         json.dump(article, f, ensure_ascii=False, indent=2)
 
-    print("✅ Article saved to theblock_article_scraperapi.json")
+    print(" Article saved to theblock_article_scraperapi.json")

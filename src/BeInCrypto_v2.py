@@ -8,7 +8,13 @@ import json
 
 # RSS + Playwright approach 
 
-# 🕵️ Full content scraper for BeInCrypto articles
+# Format today's date
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Create dated filename
+filename = f"BeInCrypto_articles_24h_{today_str}.json"
+
+# Full content scraper for BeInCrypto articles
 def get_url_content_playwright_beincrypto(url):
     try:
         with sync_playwright() as p:
@@ -35,9 +41,14 @@ def get_url_content_playwright_beincrypto(url):
             soup = BeautifulSoup(html, "html.parser")
             container = soup.select_one("div.entry-content")
             paragraphs = container.find_all("p") if container else []
+            paragraph_count = len(paragraphs)
 
             # For now we limit to 10 paragraphs
-            return "\n".join(p.get_text(strip=True) for p in paragraphs[:10]) if paragraphs else "⚠️ No entry-content <p> tags found"
+            return (
+                "\n".join(p.get_text(strip=True) for p in paragraphs[:12]) if paragraphs else "No entry-content <p> tags found",
+                paragraph_count
+            )
+
 
     except Exception as e:
         return f"❌ Stealth Playwright error: {e}"
@@ -66,8 +77,8 @@ def fetch_beincrypto_last_24h():
         soup = BeautifulSoup(raw_description, "html.parser")
         post = soup.get_text(strip=True)
 
-        print(f"🕒 [{published_dt}] Fetching: {title}")
-        url_content = get_url_content_playwright_beincrypto(link)
+        print(f"[{published_dt}] Fetching: {title}")
+        url_content, paragraph_count = get_url_content_playwright_beincrypto(link)
 
         articles.append({
             "title": title,
@@ -76,24 +87,26 @@ def fetch_beincrypto_last_24h():
             "views": None,
             "reposts": None,
             "url_content": url_content,
+            "paragraph_count": paragraph_count,  
             "source": "BeInCrypto",
             "published": published_dt.isoformat()
         })
 
     return articles
 
-# 🧪 Run + save
+# Run + save
 if __name__ == "__main__":
     articles = fetch_beincrypto_last_24h()
 
     for i, a in enumerate(articles, 1):
         print(f"[{i}] {a['title']}")
-        print(f"🕒 Published: {a['published']}")
-        print(f"📄 Full content: {a['url_content'][:300]}...") # Limits to 300 characters
-        print(f"🔗 {a['url']}")
+        print(f"Published: {a['published']}")
+        print(f"Full content: {a['url_content'][:500]}...") # Limits to 500 characters
+        print(f"Paragraphs: {a['paragraph_count']}")
+        print(f"{a['url']}")
         print("-" * 60)
 
-    with open("beincrypto_24h_articles.json", "w", encoding="utf-8") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         json.dump(articles, f, ensure_ascii=False, indent=2)
 
-    print(f"\n✅ Saved {len(articles)} recent articles to beincrypto_24h_articles.json")
+    print(f"\n Saved {len(articles)} articles to {filename}")
