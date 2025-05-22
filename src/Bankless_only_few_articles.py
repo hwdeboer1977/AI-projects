@@ -78,7 +78,7 @@ def scrape_bankless_articles(limit=5):
             prose = article_soup.select_one("article") or article_soup.select_one("div.prose")
             paragraphs = prose.find_all("p") if prose else []
             paragraph_count = len(paragraphs)
-            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:12]) or "⚠️ No content found"
+            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs) or "⚠️ No content found"
 
             article_page.close()
 

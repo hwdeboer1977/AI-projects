@@ -40,7 +40,7 @@ def get_cointelegraph_post_and_content(url):
             content_container = soup.select_one("div.post-content.relative")
             paragraphs = content_container.find_all("p") if content_container else []
             paragraph_count = len(paragraphs)
-            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:12]) if paragraphs else "⚠️ No <p> tags found"
+            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs) if paragraphs else "⚠️ No <p> tags found"
 
             return post, url_content, paragraph_count
 

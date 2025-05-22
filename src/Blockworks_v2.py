@@ -142,4 +142,4 @@ if __name__ == "__main__":
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(articles, f, ensure_ascii=False, indent=2)
 
-    print(f"\n✅ Saved {len(articles)} articles to {filename}")
+    print(f"\n Saved {len(articles)} articles to {filename}")

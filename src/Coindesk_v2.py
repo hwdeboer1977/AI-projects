@@ -67,7 +67,7 @@ def fetch_coindesk_last_24h():
             soup = BeautifulSoup(content_list[0]["value"], "html.parser")
             paragraphs = soup.find_all("p")
             paragraph_count = len(paragraphs)
-            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:12]) # Limit to 12 paragraphs
+            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs) # No Limit on paragraphs
 
         results.append({
             "title": title,

@@ -56,8 +56,13 @@ def get_url_content_playwright_beincrypto(url):
             paragraph_count = len(paragraphs)
 
             # For now we limit to 12 paragraphs
+            # return (
+            #     "\n".join(p.get_text(strip=True) for p in paragraphs[:12]) if paragraphs else "No entry-content <p> tags found",
+            #     paragraph_count
+            # )
+
             return (
-                "\n".join(p.get_text(strip=True) for p in paragraphs[:12]) if paragraphs else "No entry-content <p> tags found",
+                "\n".join(p.get_text(strip=True) for p in paragraphs) if paragraphs else "No entry-content <p> tags found",
                 paragraph_count
             )
 

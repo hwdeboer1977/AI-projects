@@ -50,7 +50,7 @@ def get_url_content_playwright_stealth(url):
             paragraphs = container.find_all("p") if container else []
             paragraph_count = len(paragraphs)
 
-            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs[:12]) if paragraphs else "⚠️ No post-content <p> tags found"
+            url_content = "\n".join(p.get_text(strip=True) for p in paragraphs) if paragraphs else "⚠️ No post-content <p> tags found"
             return url_content, paragraph_count
 
     except Exception as e:
