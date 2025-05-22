@@ -98,6 +98,6 @@ for tweet in article["related_tweets"]:
     aggregated_metrics["impressions"] += metrics["impression_count"]
 
 # Print or store results
-print(f"\n📊 Engagement for: {article['title']}")
+print(f"\n Engagement for: {article['title']}")
 for key, value in aggregated_metrics.items():
     print(f"{key.capitalize()}: {value}")

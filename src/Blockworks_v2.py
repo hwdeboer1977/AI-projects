@@ -51,6 +51,8 @@ def fetch_html_with_udc(url, debug_name=None, wait_time=5):
 
     return html
 
+    
+
 # Scrape full article content from one article page
 def get_article_data(url, debug=False):
     try:
@@ -58,6 +60,10 @@ def get_article_data(url, debug=False):
 
         # Parse HTML
         soup = BeautifulSoup(html, "html.parser")
+
+        # Extract title
+        title_tag = soup.find("title")
+        title = title_tag.get_text(strip=True) if title_tag else "Untitled"
 
         # Extract publish time
         time_tag = soup.find("time")
@@ -87,6 +93,7 @@ def get_article_data(url, debug=False):
             "url": url,
             "source": "Blockworks",
             "published": published_dt.isoformat(),
+            "title": title,
             "post": post,
             "url_content": url_content,
             "paragraph_count": paragraph_count
@@ -96,8 +103,9 @@ def get_article_data(url, debug=False):
         return {
             "url": url,
             "source": "Blockworks",
+            "title": "UDC Error",
             "post": "",
-            "url_content": f"❌ UDC error: {e}"
+            "url_content": f"UDC error: {e}"
         }
 
 # Load latest article URLs from the main news page
