@@ -20,6 +20,8 @@ include/
 *.env
 pyvenv.cfg
 *.json
+newsletter*
+summary*.md
 
 # VS Code settings
 .vscode/
