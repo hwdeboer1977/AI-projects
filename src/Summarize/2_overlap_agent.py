@@ -13,14 +13,23 @@ load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = openai.OpenAI(api_key=openai_api_key)
 
+# Settings
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Select current date or earlier data (if you want to access earlier dates)
+date_str = today_str
+#date_str = "05_22_2025"
+
 @function_tool
 def detect_cross_posting(ctx: RunContextWrapper[Any], threshold: float = 0.85) -> str:
     """
     Detects article overlap based on semantic similarity (embedding).
     Groups articles that are likely covering the same story.
     """
-    today = datetime.utcnow().strftime("%m_%d_%Y")
-    json_path = f"summary_combined_{today}.json"
+    
+    json_path = f"Output_{date_str}/summary_combined_{date_str}.json"
+
+   
 
     if not os.path.exists(json_path):
         return f"❌ Summary file not found: {json_path}"
@@ -69,7 +78,7 @@ def detect_cross_posting(ctx: RunContextWrapper[Any], threshold: float = 0.85) -
 
     # Step 4: Save non-overlapping articles to a new file
     remaining_articles = [article for idx, article in enumerate(articles) if idx not in dropped_indices]
-    output_path = f"summary_filtered_{today}.json"
+    output_path = f"Output_{date_str}/summary_filtered_{date_str}.json"
     with open(output_path, "w", encoding="utf-8") as out:
         json.dump(remaining_articles, out, indent=2)
     print(f"📁 Saved {len(remaining_articles)} non-overlapping articles to {output_path}")

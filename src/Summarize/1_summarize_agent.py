@@ -18,6 +18,13 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 import openai
 client = openai.OpenAI(api_key=openai_api_key)
 
+# Settings
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Select current date or earlier data (if you want to access earlier dates)
+date_str = today_str
+#date_str = "05_22_2025"
+
 # Summarizer tool
 @function_tool
 def summarize_all_sources(ctx: RunContextWrapper[Any], count_per_source: int = 40) -> str:
@@ -25,7 +32,6 @@ def summarize_all_sources(ctx: RunContextWrapper[Any], count_per_source: int = 4
     Summarizes up to N articles from each news source file.
     Saves both Markdown and JSON with summaries from all sources.
     """
-    today = datetime.utcnow().strftime("%m_%d_%Y")
     sources = [
         "Cointelegraph",
         "Decrypt",
@@ -39,7 +45,7 @@ def summarize_all_sources(ctx: RunContextWrapper[Any], count_per_source: int = 4
     json_output = []
 
     for source in sources:
-        file_path = f"output_22_5_2025/{source}_articles_24h_05_22_2025.json"
+        file_path = f"Output_{date_str}/{source}_articles_24h_{date_str}.json"
 
         if not os.path.exists(file_path):
             print(f"⚠️ File not found: {file_path}")
@@ -119,8 +125,8 @@ def summarize_all_sources(ctx: RunContextWrapper[Any], count_per_source: int = 4
             })
 
     # Output file paths
-    md_path = f"summary_combined_{today}.md"
-    json_path = f"summary_combined_{today}.json"
+    md_path = f"Output_{date_str}/summary_combined_{date_str}.md"
+    json_path = f"Output_{date_str}/summary_combined_{date_str}.json"
 
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(markdown_output)

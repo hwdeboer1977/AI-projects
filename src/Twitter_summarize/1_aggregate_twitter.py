@@ -8,15 +8,6 @@ from dotenv import load_dotenv
 import openai
 import re
 
-import glob
-import os
-import json
-import numpy as np
-from datetime import datetime
-from sklearn.metrics.pairwise import cosine_similarity
-from dotenv import load_dotenv
-import openai
-import re
 
 # Load environment variables
 load_dotenv()
@@ -24,10 +15,15 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 client = openai.OpenAI(api_key=openai.api_key)
 
 
+
 # Settings
 today_str = datetime.now().strftime("%m_%d_%Y")
-output_path = f"Output_Twitter_05_22_2025/top_trending_tweets_labeled_{today_str}.json"
 
+# Select current date or earlier data (if you want to access earlier dates)
+date_str = today_str
+#date_str = "05_22_2025"
+
+output_path = f"Output_Twitter_{date_str}/top_trending_tweets_labeled_{date_str}.json"
 
 # Clean text helper
 # List of noisy intro phrases to remove
@@ -50,7 +46,7 @@ def clean_text(text):
 
 # Aggregate tweets
 all_tweets = []
-for path in glob.glob("Output_Twitter_05_22_2025/Twitter_*.json"):
+for path in glob.glob(f"Output_Twitter_{date_str}/Twitter_*.json"):
     with open(path, "r", encoding="utf-8") as f:
         tweets = json.load(f)
         all_tweets.extend(tweets)

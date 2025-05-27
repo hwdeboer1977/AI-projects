@@ -10,10 +10,15 @@ import os
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# File paths
-today = datetime.utcnow().strftime("%m_%d_%Y")
-file_path = f"summary_with_twitter_{today}.json"
-output_path = f"top_10_unique_articles_{today}.json"
+# Settings
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Select current date or earlier data (if you want to access earlier dates)
+date_str = today_str
+#date_str = "05_22_2025"
+
+file_path = f"Output_{date_str}/summary_with_twitter_{date_str}.json"
+output_path = f"Output_{date_str}/top_10_unique_articles_{date_str}.json"
 
 # Load articles
 with open(file_path, "r", encoding="utf-8") as f:
@@ -87,4 +92,4 @@ for i, article in enumerate(selected):
 with open(output_path, "w", encoding="utf-8") as f:
     json.dump(selected, f, indent=2)
 
-print(f"✅ Saved top 10 unique articles (with similarity scores) to {output_path}")
+print(f"Saved top 10 unique articles (with similarity scores) to {output_path}")

@@ -1,10 +1,15 @@
 import json
 from datetime import datetime
 
-# Load today's article list
-today = datetime.utcnow().strftime("%m_%d_%Y")
-input_path = f"top_10_unique_articles_{today}.json"
-output_path = f"newsletter_{today}.md"
+# Load today's article list# Settings
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Select current date or earlier data (if you want to access earlier dates)
+date_str = today_str
+#date_str = "05_22_2025"
+
+input_path = f"Output_{date_str}/top_10_unique_articles_{date_str}.json"
+output_path = f"Output_{date_str}/newsletter_{date_str}.md"
 
 with open(input_path, "r", encoding="utf-8") as f:
     articles = json.load(f)
@@ -18,7 +23,7 @@ lines = [
     "\\end{flushleft}",
     "```",
     "",
-    f"# Daily Crypto Brief – {today.replace('_', '/')}",
+    f"# Daily Crypto Brief – {date_str.replace('_', '/')}",
     "Here are the top 10 trending crypto stories based on Twitter engagement.\n"
 ]
 

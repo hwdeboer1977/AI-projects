@@ -11,14 +11,21 @@ from datetime import datetime
 load_dotenv()
 bearer_token = os.getenv("TWITTER_BEARER_TOKEN")
 
+# Settings
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Select current date or earlier data (if you want to access earlier dates)
+date_str = today_str
+#date_str = "05_22_2025"
+
 # Clean title/keywords for Twitter query
 def clean(text):
     return re.sub(r'[^\w\s\-]', '', text).strip()
 
 def check_twitter_engagement():
-    today = datetime.utcnow().strftime("%m_%d_%Y")
-    input_path = f"summary_filtered_{today}.json"
-    output_path = f"summary_with_twitter_{today}.json"
+   
+    input_path = f"Output_{date_str}/summary_filtered_{date_str}.json"
+    output_path = f"Output_{date_str}/summary_with_twitter_{date_str}.json"
 
     if not bearer_token:
         print("❌ Missing TWITTER_BEARER_TOKEN in .env")

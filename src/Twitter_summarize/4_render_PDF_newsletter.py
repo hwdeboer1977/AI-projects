@@ -4,8 +4,13 @@ from datetime import datetime
 
 # Settings
 today_str = datetime.now().strftime("%m_%d_%Y")
-input_path = f"Output_Twitter_05_22_2025/top10_tweets_brief_{today_str}.json"
-output_path = f"Output_Twitter_05_22_2025/top10_tweets_clean_{today_str}.html"
+
+# Select current date or earlier data (if you want to access earlier dates)
+date_str = today_str
+#date_str = "05_22_2025"
+
+input_path = f"Output_Twitter_{date_str}/top10_tweets_brief_{date_str}.json"
+output_path = f"Output_Twitter_{date_str}/top10_tweets_clean_{date_str}.html"
 
 # Load tweets
 with open(input_path, "r", encoding="utf-8") as f:

@@ -1,7 +1,16 @@
 import subprocess
 import os
+from datetime import datetime
 
-md_file = "newsletter_05_24_2025.md"
+# Load today's article list# Settings
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Select current date or earlier data (if you want to access earlier dates)
+date_str = today_str
+#date_str = "05_22_2025"
+
+
+md_file = f"Output_{date_str}/newsletter_{date_str}.md"
 pdf_file = md_file.replace(".md", ".pdf")
 
 # Optional Pandoc options
@@ -32,7 +41,7 @@ result = subprocess.run([
 # result = subprocess.run(pandoc_args, capture_output=True, text=True)
 
 if result.returncode == 0:
-    print(f"✅ PDF created: {pdf_file}")
+    print(f"PDF created: {pdf_file}")
 else:
-    print("❌ Pandoc failed:")
+    print("Pandoc failed:")
     print(result.stderr)

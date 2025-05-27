@@ -1,10 +1,15 @@
 import json
 from datetime import datetime
 
-# Paths
+# Settings
 today_str = datetime.now().strftime("%m_%d_%Y")
-input_path = f"Output_Twitter_05_22_2025/top_trending_tweets_labeled_{today_str}.json"
-output_path = f"Output_Twitter_05_22_2025/top_trending_tweets_selected_{today_str}.json"
+
+# Select current date or earlier data (if you want to access earlier dates)
+date_str = today_str
+#date_str = "05_22_2025"
+
+input_path = f"Output_Twitter_{date_str}/top_trending_tweets_labeled_{date_str}.json"
+output_path = f"Output_Twitter_{date_str}/top_trending_tweets_selected_{date_str}.json"
 
 # Load tweets
 with open(input_path, "r", encoding="utf-8") as f:
