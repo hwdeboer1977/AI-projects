@@ -12,10 +12,19 @@ from playwright_stealth import stealth_sync  # Obfuscates Playwright fingerprint
 from datetime import datetime, timedelta  # Time window filtering
 import time  # Timestamp parsing
 import json  # Save articles to JSON
+import os
 
-# Format today's date for filename
+
+# Format today's date
 today_str = datetime.now().strftime("%m_%d_%Y")
-filename = f"Decrypt_articles_24h_{today_str}.json"
+
+# Create folder for today (e.g. Output_05_26_2025)
+output_dir = f"Output_{today_str}"
+os.makedirs(output_dir, exist_ok=True)
+
+# Set filename path inside that folder
+filename = os.path.join(output_dir, f"Decrypt_articles_24h_{today_str}.json")
+
 
 # Use Playwright (with stealth) to get full content from article URL
 def get_url_content_playwright_stealth(url):

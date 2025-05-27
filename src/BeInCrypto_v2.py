@@ -5,7 +5,7 @@ from playwright_stealth import stealth_sync # Hides automation fingerprints
 from datetime import datetime, timedelta # Handles date/time operations
 import time # Converts struct_time from RSS to datetime
 import json # Saves output as JSON
-
+import os
 
 
 # Combines RSS and full scraping: Efficient 24h filtering from RSS + full article scrape using Playwright.
@@ -13,8 +13,12 @@ import json # Saves output as JSON
 # Format today's date
 today_str = datetime.now().strftime("%m_%d_%Y")
 
-# Create dated filename
-filename = f"BeInCrypto_articles_24h_{today_str}.json"
+# Create folder for today (e.g. Output_05_26_2025)
+output_dir = f"Output_{today_str}"
+os.makedirs(output_dir, exist_ok=True)
+
+# Set filename path inside that folder
+filename = os.path.join(output_dir, f"BeInCrypto_articles_24h_{today_str}.json")
 
 # Full content scraper using Playwright for BeInCrypto articles
 def get_url_content_playwright_beincrypto(url):

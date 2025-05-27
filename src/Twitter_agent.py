@@ -1,11 +1,3 @@
-# Twitter Tweet Scraper (past 24 hours)
-# Method: Twitter API v2 + Bearer token authentication
-# - Fetches recent tweets from a list of Twitter/X accounts
-# - Filters tweets within the past 24 hours
-# - Extracts tweet URL, full text, views, reposts, and timestamp
-# - Requires a valid BEARER_TOKEN in .env file
-# - Saves results to JSON files, one per account
-
 import requests
 import datetime
 import json
@@ -14,14 +6,14 @@ import os
 
 # 1. List of Twitter usernames to fetch
 usernames = [
-     "tier10k",
-     "WuBlockchain",
-     "glassnode",
-     "santimentfeed",
-     "WatcherGuru",
-     "CryptoQuant",
-     "lookonchain",
-     "DefiLlama"
+     #"tier10k",
+     #"WuBlockchain",
+     #"glassnode",
+     #"santimentfeed",
+     #"WatcherGuru",
+     #"CryptoQuant",
+     #"lookonchain",
+     #"DefiLlama"
 ]
 
 # 2. Load API key from .env
@@ -42,6 +34,7 @@ def create_headers(token):
 def get_user_id(username):
     url = f"https://api.twitter.com/2/users/by/username/{username}"
     response = requests.get(url, headers=create_headers(BEARER_TOKEN))
+    print(f"🔎 Getting user ID for {username} | Status: {response.status_code}")
     response.raise_for_status()
     return response.json()["data"]["id"]
 
@@ -52,17 +45,22 @@ def get_recent_tweets(user_id, max_results=50):
         "max_results": max_results,
         "tweet.fields": "created_at,public_metrics",
         "start_time": start_time
-        # "exclude": "replies"  # optional
     }
     response = requests.get(url, headers=create_headers(BEARER_TOKEN), params=params)
     print(f"📡 API Status: {response.status_code} | URL: {response.url}")
     response.raise_for_status()
-    return response.json().get("data", [])
+    json_response = response.json()
+    
+    if "data" not in json_response:
+        print("⚠️ No tweets returned in the last 24 hours.")
+        return []
+    
+    return json_response.get("data", [])
 
 # Extract relevant fields from tweet payload
 def extract_fields(tweet, username):
-    post = tweet["text"]
-    title = " ".join(post.split()[:12]) # First 12 words for preview title
+    post = tweet.get("text", "")
+    title = " ".join(post.split()[:12])
     tweet_id = tweet["id"]
     url = f"https://x.com/{username}/status/{tweet_id}"
     metrics = tweet.get("public_metrics", {})
@@ -71,21 +69,29 @@ def extract_fields(tweet, username):
         "title": title,
         "post": post,
         "url": url,
-        "views": metrics.get("impression_count"),
-        "reposts": metrics.get("retweet_count"),
-        "created_at": tweet["created_at"]
+        "views": metrics.get("impression_count", "N/A"),  # May not be available
+        "reposts": metrics.get("retweet_count", 0),
+        "created_at": tweet.get("created_at")
     }
 
 # Main script: loops through all usernames
 if __name__ == "__main__":
+    today_str = datetime.datetime.now().strftime("%m_%d_%Y")
+    output_dir = f"Output_Twitter_{today_str}"
+    os.makedirs(output_dir, exist_ok=True)
+
     for username in usernames:
         print(f"\n📡 Fetching tweets for: {username}")
         try:
             user_id = get_user_id(username)
             tweets = get_recent_tweets(user_id)
+
+            if not tweets:
+                print(f"ℹ️ No tweets from {username} in the last 24 hours.\n" + "-" * 60)
+                continue
+
             results = [extract_fields(tweet, username) for tweet in tweets]
 
-             # Console preview
             for i, r in enumerate(results, 1):
                 print(f"[{i}] {r['title']}")
                 print(f" {r['post'][:80]}...")
@@ -93,14 +99,11 @@ if __name__ == "__main__":
                 print(f" {r['created_at']} | 🔗 {r['url']}")
                 print("-" * 60)
 
-            today_str = datetime.datetime.now().strftime("%m_%d_%Y")
-            out_file = f"Twitter_{username}_24h_{today_str}.json"
-
-             # Save to JSON file
+            out_file = os.path.join(output_dir, f"Twitter_{username}_24h_{today_str}.json")
             with open(out_file, "w", encoding="utf-8") as f:
                 json.dump(results, f, ensure_ascii=False, indent=2)
 
-            print(f"\n Saved {len(results)} tweets to {out_file}")
+            print(f"\n✅ Saved {len(results)} tweets to {out_file}")
 
         except Exception as e:
             print(f"❌ Failed to fetch tweets for {username}: {e}")

@@ -22,6 +22,8 @@ pyvenv.cfg
 *.json
 newsletter*
 summary*.md
+chromedriver*
+Output*
 
 # VS Code settings
 .vscode/

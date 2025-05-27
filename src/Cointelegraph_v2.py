@@ -10,10 +10,20 @@ from playwright.sync_api import sync_playwright  # Controls headless Chromium br
 from datetime import datetime, timedelta  # Date filtering
 import time  # Convert struct_time to datetime
 import json  # Save output as JSON
+import os
 
-# Format today's date for filename
+
+# Format today's date
 today_str = datetime.now().strftime("%m_%d_%Y")
-filename = f"Cointelegraph_articles_24h_{today_str}.json"
+
+# Create folder for today (e.g. Output_05_26_2025)
+output_dir = f"Output_{today_str}"
+os.makedirs(output_dir, exist_ok=True)
+
+# Set filename path inside that folder
+filename = os.path.join(output_dir, f"Cointelegraph_articles_24h_{today_str}.json")
+
+
 
 # Scrape summary + full content from article page using Playwright
 def get_cointelegraph_post_and_content(url):

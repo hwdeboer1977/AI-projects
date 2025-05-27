@@ -20,7 +20,14 @@ CUTOFF_TIME = datetime.now(timezone.utc) - timedelta(days=1)
 
 # Format today's date for the output filename
 today_str = datetime.now().strftime("%m_%d_%Y")
-filename = f"Blockworks_articles_24h_{today_str}.json"
+
+# Create folder for today (e.g. Output_05_26_2025)
+output_dir = f"Output_{today_str}"
+os.makedirs(output_dir, exist_ok=True)
+
+
+# Set filename path inside that folder
+filename = os.path.join(output_dir, f"Blockworks_articles_24h_h_{today_str}.json")
 
 
 # Utility: Fetch page HTML using UDC with optional debugging

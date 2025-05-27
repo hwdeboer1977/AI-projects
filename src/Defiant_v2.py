@@ -5,6 +5,16 @@
 # - Scrolls the page to ensure full content is loaded
 # - Optionally dumps HTML of the last article (debug mode)
 
+
+
+# We are hitting Cloudflare Turnstile or JavaScript CAPTCHA. This is a more advanced bot protection that:
+
+# Renders inside the browser (not visible in HTML source),
+
+# Requires real user interaction (mouse movement, clicks),
+
+# Blocks even headless browsers like Playwright, unless bypassed.
+
 import feedparser  # Parses RSS feeds
 from bs4 import BeautifulSoup  # Parses HTML
 from datetime import datetime, timedelta  # For date filtering
@@ -13,9 +23,16 @@ import time  # For scrolling and delays
 import json  # Save as JSON
 import os  # For debug output
 
-# Generate filename based on today's date
+# Format today's date
 today_str = datetime.now().strftime("%m_%d_%Y")
-filename = f"Defiant_articles_24h_{today_str}.json"
+
+# Create folder for today (e.g. Output_05_26_2025)
+output_dir = f"Output_{today_str}"
+os.makedirs(output_dir, exist_ok=True)
+
+# Set filename path inside that folder
+filename = os.path.join(output_dir, f"Defiant_articles_24h_{today_str}.json")
+
 
 
 # Scrapes full article content from a given URL using undetected_chromedriver
@@ -47,17 +64,24 @@ def get_url_content_udc(url, debug=False):
             with open("debug/latest_defiant_article.html", "w", encoding="utf-8") as f:
                 f.write(html)
 
-        # Extract paragraphs from <article>
+        # Extract paragraphs from <article> (with fallback)
         soup = BeautifulSoup(html, "html.parser")
-        paragraphs = soup.select("article p")
+
+        article = soup.find("article")
+        if article:
+            paragraphs = article.find_all("p")
+        else:
+            # fallback if <article> tag is missing
+            paragraphs = soup.find_all("p")
+
         paragraph_count = len(paragraphs)
-
-
         url_content = "\n".join(p.get_text(strip=True) for p in paragraphs) if paragraphs else "⚠️ No post-content <p> tags found"
-        return url_content, paragraph_count
+
+        return url_content, paragraph_count  
 
     except Exception as e:
-        return f"❌ UDC error: {e}"
+        return f"❌ UDC error: {e}", 0
+
 
 # Fetch articles from the RSS feed and scrape full content for those from the last 24h
 def fetch_defiant_articles_24h(debug=False):

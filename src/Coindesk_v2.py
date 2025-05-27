@@ -12,12 +12,20 @@ from bs4 import BeautifulSoup # Cleans HTML inside <description> and <content:en
 import json
 from datetime import datetime, timedelta
 import time
+import os
 
 
-
-# Format today's date to use in output file name
+# Format today's date
 today_str = datetime.now().strftime("%m_%d_%Y")
-filename = f"Coindesk_articles_24h_{today_str}.json"
+
+# Create folder for today (e.g. Output_05_26_2025)
+output_dir = f"Output_{today_str}"
+os.makedirs(output_dir, exist_ok=True)
+
+# Set filename path inside that folder
+filename = os.path.join(output_dir, f"Coindesk_articles_24h_{today_str}.json")
+
+
 
 # Main function to fetch and filter CoinDesk articles from the past 24 hours
 def fetch_coindesk_last_24h():
