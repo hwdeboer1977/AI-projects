@@ -14,8 +14,8 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 today_str = datetime.now().strftime("%m_%d_%Y")
 
 # Select current date or earlier data (if you want to access earlier dates)
-date_str = today_str
-#date_str = "05_22_2025"
+#date_str = today_str
+date_str = "05_27_2025"
 
 file_path = f"Output_{date_str}/summary_with_twitter_{date_str}.json"
 output_path = f"Output_{date_str}/top_10_unique_articles_{date_str}.json"
@@ -88,8 +88,17 @@ for i, article in enumerate(selected):
             "similarity": round(float(sim), 3)
         })
 
-# Save result
-with open(output_path, "w", encoding="utf-8") as f:
-    json.dump(selected, f, indent=2)
+# Save only title, url, and summary
+cleaned_output = [
+    {
+        "title": article["title"],
+        "url": article.get("url", ""),
+        "summary": article.get("summary", [])
+    }
+    for article in selected
+]
 
-print(f"Saved top 10 unique articles (with similarity scores) to {output_path}")
+with open(output_path, "w", encoding="utf-8") as f:
+    json.dump(cleaned_output, f, indent=2)
+
+print(f"Saved top 10 unique articles (title, url, summary only) to {output_path}")
