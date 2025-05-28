@@ -80,7 +80,7 @@ def summarize_all_sources(ctx: RunContextWrapper[Any], count_per_source: int = 4
                     temperature=0.5
                 )
             except Exception as e:
-                print(f"❌ Error summarizing {title}: {str(e)}")
+                print(f"Error summarizing {title}: {str(e)}")
                 continue
 
             summary_text = response.choices[0].message.content.strip()
@@ -105,7 +105,7 @@ def summarize_all_sources(ctx: RunContextWrapper[Any], count_per_source: int = 4
                 keywords = keyword_lines
 
             except Exception as e:
-                print(f"⚠️ Keyword extraction failed for '{title}': {str(e)}")
+                print(f"Keyword extraction failed for '{title}': {str(e)}")
                 keywords = []
 
 

@@ -4,12 +4,9 @@ from datetime import datetime
 
 # Settings
 today_str = datetime.now().strftime("%m_%d_%Y")
+date_str = "05_27_2025"  # Or use today_str
 
-# Select current date or earlier data (if you want to access earlier dates)
-date_str = today_str
-#date_str = "05_22_2025"
-
-input_path = f"Output_Twitter_{date_str}/top10_tweets_brief_{date_str}.json"
+input_path = f"Output_Twitter_{date_str}/top10_tweets_clean_{date_str}.json"
 output_path = f"Output_Twitter_{date_str}/top10_tweets_clean_{date_str}.html"
 
 # Load tweets
@@ -18,21 +15,13 @@ with open(input_path, "r", encoding="utf-8") as f:
 
 top_10 = tweets[:10]
 
-# Define phrases to remove
-noise_terms = [
-    r"\bJUST IN\b", r"\bBREAKING\b", r"\bUPDATE\b",
-    r"\bALERT\b", r"\bHOT\b", r"\bNEW\b", r"\bLATEST\b", r"\bLIVE\b"
-]
-
+# Optional cleanup in case some raw text slipped in
 def clean_text(text):
     if not isinstance(text, str):
         return ""
-    text = re.sub(r"http\S+", "", text)  # Remove URLs
-    text = re.sub(r'[^\w\s.,!?\'\"@:/%-]', '', text)  # Remove emojis
-    for term in noise_terms:
-        text = re.sub(term, '', text, flags=re.IGNORECASE)
-    return text.strip().lstrip(":").strip()  # <-- remove leading colon and trim
-
+    text = re.sub(r"http\S+", "", text)
+    text = re.sub(r'[^\w\s.,!?\'\"@:/%-]', '', text)
+    return text.strip().lstrip(":").strip()
 
 # HTML setup
 html_lines = [
@@ -41,7 +30,7 @@ html_lines = [
     "<head>",
     "  <meta charset='UTF-8'>",
     "  <meta name='viewport' content='width=device-width, initial-scale=1.0'>",
-    f"  <title>Top 10 Trending Tweets – {today_str.replace('_', '/')}</title>",
+    f"  <title>Top 10 Trending Tweets – {date_str.replace('_', '/')}</title>",
     "  <style>",
     "    body { font-family: Arial, sans-serif; padding: 2rem; background: #fff; color: #111; }",
     "    h1 { font-size: 1.8em; margin-bottom: 1.5rem; }",
@@ -52,15 +41,13 @@ html_lines = [
     "  </style>",
     "</head>",
     "<body>",
-    f"<h1>Top 10 Trending Tweets – {today_str.replace('_', '/')}</h1>"
+    f"<h1>Top 10 Trending Tweets – {date_str.replace('_', '/')}</h1>"
 ]
 
 # Add tweets
 for i, tweet in enumerate(top_10, 1):
-    title = clean_text(tweet.get('title', ''))
     post = clean_text(tweet.get('post', ''))
     url = tweet['url']
-
     html_lines.append(f"<h2>{i}. {post}</h2>")
     html_lines.append(f"<p><a href='{url}' target='_blank'>View Tweet</a></p>")
     html_lines.append("<hr>")
@@ -72,4 +59,4 @@ html_lines.append("</html>")
 with open(output_path, "w", encoding="utf-8") as f:
     f.write("\n".join(html_lines))
 
-print(f"Saved clean HTML newsletter to {output_path}")
+print(f"Saved clean HTML newsletter to: {output_path}")
