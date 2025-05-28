@@ -2,9 +2,27 @@ import requests
 import json
 import os
 from datetime import datetime
+from dotenv import load_dotenv
 
-API_KEY = 'SOSO-6cc7304eee8d47b4bd36f1eda97bd43a'
+
+load_dotenv()  # Loads the variables from .env
+
+
+API_KEY =  os.getenv("SOSOVALUE_API_KEY_HW")
 BASE_URL = "https://openapi.sosovalue.com/openapi/v2/etf/currentEtfDataMetrics"
+
+# Settings
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Select current date or earlier data (if you want to access earlier dates)
+date_str = today_str
+#date_str = "05_22_2025"
+
+# File path
+output_dir = f"Output_Market_{date_str}"
+os.makedirs(output_dir, exist_ok=True)
+json_output_path = f"{output_dir}/market_colour_ETF_{date_str}.json"
+
 
 def format_etf_summary(daily_inflow, cum_inflow, aum, daily_volume):
     tone = "neutral"
@@ -15,26 +33,21 @@ def format_etf_summary(daily_inflow, cum_inflow, aum, daily_volume):
 
     if tone == "bullish":
         summary = (
-            f"📊 **US Bitcoin Spot ETF Flows**\n\n"
-            f"Institutional demand surged with **${daily_inflow:,.0f} in net inflows**, pushing "
-            f"**cumulative flows to ${cum_inflow:,.0f}**. Total AUM climbed to **${aum:,.0f}**, while "
-            f"**${daily_volume:,.0f} was traded across spot ETFs** yesterday."
+            f"Institutional demand surged with ${daily_inflow:,.0f} in net inflows, pushing "
+            f"cumulative flows to ${cum_inflow:,.0f}. AUM climbed to ${aum:,.0f}, with "
+            f"${daily_volume:,.0f} traded across spot ETFs yesterday."
         )
     elif tone == "bearish":
         summary = (
-            f"📊 **US Bitcoin Spot ETF Flows**\n\n"
-            f"US BTC spot ETFs saw net outflows of **${abs(daily_inflow):,.0f}**, even as total AUM held "
-            f"steady at **${aum:,.0f}**. Cumulative inflows remain at **${cum_inflow:,.0f}**, with "
-            f"**${daily_volume:,.0f} in daily trading activity**."
+            f"US BTC spot ETFs saw net outflows of ${abs(daily_inflow):,.0f}. AUM held steady at ${aum:,.0f}, "
+            f"cumulative inflows remain at ${cum_inflow:,.0f}, and ${daily_volume:,.0f} in trading volume."
         )
     else:  # neutral
         summary = (
-            f"📊 **US Bitcoin Spot ETF Flows**\n\n"
-            f"Spot ETFs recorded **${daily_inflow:,.0f} in daily net inflows**, boosting "
-            f"**cumulative flows to ${cum_inflow:,.0f}**. Total AUM stands at **${aum:,.0f}**, with "
-            f"**${daily_volume:,.0f} traded in the past 24 hours**."
+            f"Spot ETFs recorded ${daily_inflow:,.0f} in net inflows, raising cumulative flows to ${cum_inflow:,.0f}. "
+            f"AUM is now ${aum:,.0f}, with ${daily_volume:,.0f} traded in the last 24 hours."
         )
-    return summary
+    return summary, tone
 
 
 def fetch_etf_metrics(etf_type: str):
@@ -60,33 +73,47 @@ def fetch_etf_metrics(etf_type: str):
 
     metrics = data["data"]
 
-    # Extract top-level metrics
+    # Extract summary metrics
     aum = float(metrics['totalNetAssets']['value'])
     daily_inflow = float(metrics['dailyNetInflow']['value'])
     cum_inflow = float(metrics['cumNetInflow']['value'])
     daily_volume = float(metrics['dailyTotalValueTraded']['value'])
 
-    # 📝 Format and print summary paragraph
-    summary = format_etf_summary(daily_inflow, cum_inflow, aum, daily_volume)
-    print("\n" + summary + "\n")
+    summary, tone = format_etf_summary(daily_inflow, cum_inflow, aum, daily_volume)
+    print("\n🧾 ETF Summary:\n" + summary)
 
-    # 💾 Save to markdown
-    today = datetime.utcnow().strftime("%m_%d_%Y")
-    md_file = f"etf_flows_{today}.md"
-    with open(md_file, "w", encoding="utf-8") as f:
-        f.write(summary + "\n")
-    print(f"✅ Saved ETF summary to {md_file}")
-
-    # 📦 Detailed ETF Breakdown
-    print("\n📦 ETF Breakdown:\n")
+    # Format detailed ETF data
+    etf_list = []
     for etf in metrics["list"]:
-        print(f"{etf['ticker']} ({etf['institute']})")
-        print(f"  AUM: ${float(etf['netAssets']['value']):,.2f}")
-        print(f"  Daily Volume: ${float(etf['dailyValueTraded']['value']):,.2f}")
-        print(f"  Cumulative Flow: ${float(etf['cumNetInflow']['value']):,.2f}")
-        print(f"  Fee: {float(etf['fee']['value']) * 100:.2f}%")
-        print(f"  Premium/Discount: {float(etf['discountPremiumRate']['value']) * 100:.2f}%")
+        etf_list.append({
+            "ticker": etf["ticker"],
+            "institute": etf["institute"],
+            "aum": float(etf["netAssets"]["value"]),
+            "daily_volume": float(etf["dailyValueTraded"]["value"]),
+            "cumulative_flow": float(etf["cumNetInflow"]["value"]),
+            "fee": float(etf["fee"]["value"]),
+            "premium_discount": float(etf["discountPremiumRate"]["value"])
+        })
+
+    
+
+    json_data = {
+        "date": date_str,
+        "etf_type": etf_type,
+        "summary": summary,
+        "tone": tone,
+        "daily_inflow": daily_inflow,
+        "cumulative_inflow": cum_inflow,
+        "aum": aum,
+        "daily_volume": daily_volume,
+        "etfs": etf_list
+    }
+
+    with open(json_output_path, "w", encoding="utf-8") as f:
+        json.dump(json_data, f, indent=2)
+
+    print(f"\nSaved ETF summary and breakdown to {json_output_path}")
 
 
-# 🟠 Run BTC ETF Summary
+#  Run BTC ETF Summary
 fetch_etf_metrics("us-btc-spot")
