@@ -32,7 +32,7 @@ def detect_cross_posting(ctx: RunContextWrapper[Any], threshold: float = 0.85) -
    
 
     if not os.path.exists(json_path):
-        return f"❌ Summary file not found: {json_path}"
+        return f"Summary file not found: {json_path}"
 
     with open(json_path, "r", encoding="utf-8") as f:
         articles = json.load(f)
@@ -52,7 +52,7 @@ def detect_cross_posting(ctx: RunContextWrapper[Any], threshold: float = 0.85) -
             for e in response.data:
                 embeddings.append(np.array(e.embedding))
     except Exception as e:
-        return f"❌ Embedding error: {str(e)}"
+        return f"Embedding error: {str(e)}"
 
     # Step 2: Compute cosine similarity
     similarities = cosine_similarity(embeddings)
@@ -81,16 +81,16 @@ def detect_cross_posting(ctx: RunContextWrapper[Any], threshold: float = 0.85) -
     output_path = f"Output_{date_str}/summary_filtered_{date_str}.json"
     with open(output_path, "w", encoding="utf-8") as out:
         json.dump(remaining_articles, out, indent=2)
-    print(f"📁 Saved {len(remaining_articles)} non-overlapping articles to {output_path}")
+    print(f"Saved {len(remaining_articles)} non-overlapping articles to {output_path}")
 
     if not overlap_report:
-        return "✅ No significant article overlap detected."
+        return "No significant article overlap detected."
 
     # Output as string for now
     result = "Detected Overlapping Articles:\n\n"
     for entry in overlap_report:
         result += (
-            f"🔁 {entry['similarity']} | "
+            f"{entry['similarity']} | "
             f"{entry['source_1']}: {entry['article_1']} ↔ "
             f"{entry['source_2']}: {entry['article_2']}\n"
         )

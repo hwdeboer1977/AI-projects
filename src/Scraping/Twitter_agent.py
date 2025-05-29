@@ -3,17 +3,18 @@ import datetime
 import json
 from dotenv import load_dotenv
 import os
+import time  # already imported above
 
 # 1. List of Twitter usernames to fetch
 usernames = [
-     #"tier10k",
-     #"WuBlockchain",
-     #"glassnode",
-     #"santimentfeed",
-     #"WatcherGuru",
-     #"CryptoQuant",
-     #"lookonchain",
-     #"DefiLlama"
+     "tier10k",
+     "WuBlockchain",
+     "glassnode",
+     "santimentfeed",
+     "WatcherGuru",
+     "CryptoQuant",
+     "lookonchain",
+     "DefiLlama"
 ]
 
 # 2. Load API key from .env
@@ -39,20 +40,33 @@ def get_user_id(username):
     return response.json()["data"]["id"]
 
 # Fetch recent tweets by user ID (filtered to last 24h)
-def get_recent_tweets(user_id, max_results=50):
+def get_recent_tweets(user_id, max_results=50, retry_delay=900):  # 900s = 15 minutes
     url = f"https://api.twitter.com/2/users/{user_id}/tweets"
     params = {
         "max_results": max_results,
         "tweet.fields": "created_at,public_metrics",
         "start_time": start_time
     }
-    response = requests.get(url, headers=create_headers(BEARER_TOKEN), params=params)
-    print(f"📡 API Status: {response.status_code} | URL: {response.url}")
-    response.raise_for_status()
+
+    while True:
+        response = requests.get(url, headers=create_headers(BEARER_TOKEN), params=params)
+        print(f"📡 API Status: {response.status_code} | URL: {response.url}")
+        
+        if response.status_code == 429:
+            print("Rate limit hit! Waiting 15 minutes before retrying...")
+            time.sleep(retry_delay)
+            continue  # Try again after waiting
+
+        try:
+            response.raise_for_status()
+            break
+        except Exception as e:
+            raise e
+
     json_response = response.json()
     
     if "data" not in json_response:
-        print("⚠️ No tweets returned in the last 24 hours.")
+        print("No tweets returned in the last 24 hours.")
         return []
     
     return json_response.get("data", [])
@@ -87,7 +101,7 @@ if __name__ == "__main__":
             tweets = get_recent_tweets(user_id)
 
             if not tweets:
-                print(f"ℹ️ No tweets from {username} in the last 24 hours.\n" + "-" * 60)
+                print(f"ℹNo tweets from {username} in the last 24 hours.\n" + "-" * 60)
                 continue
 
             results = [extract_fields(tweet, username) for tweet in tweets]
@@ -103,7 +117,7 @@ if __name__ == "__main__":
             with open(out_file, "w", encoding="utf-8") as f:
                 json.dump(results, f, ensure_ascii=False, indent=2)
 
-            print(f"\n✅ Saved {len(results)} tweets to {out_file}")
+            print(f"\ Saved {len(results)} tweets to {out_file}")
 
         except Exception as e:
-            print(f"❌ Failed to fetch tweets for {username}: {e}")
+            print(f"Failed to fetch tweets for {username}: {e}")

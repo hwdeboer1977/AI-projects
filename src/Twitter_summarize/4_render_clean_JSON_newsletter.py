@@ -6,8 +6,8 @@ from datetime import datetime
 today_str = datetime.now().strftime("%m_%d_%Y")
 
 # Select current date or earlier data (if you want to access earlier dates)
-#date_str = today_str
-date_str = "05_27_2025"
+date_str = today_str
+#date_str = "05_27_2025"
 
 input_path = f"Output_Twitter_{date_str}/top10_tweets_brief_{date_str}.json"
 output_path = f"Output_Twitter_{date_str}/top10_tweets_clean_{date_str}.json"

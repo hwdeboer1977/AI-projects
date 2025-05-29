@@ -10,10 +10,21 @@ from bs4 import BeautifulSoup  # Parses HTML
 import json  # Save results
 import os  # File system operations
 from dotenv import load_dotenv  # Load .env credentials
+from datetime import datetime, timedelta
 
 # Load ScraperAPI key from .env file
 load_dotenv()
 SCRAPER_API_KEY = os.getenv("SCRAPER_API")
+
+# Format today's date
+today_str = datetime.now().strftime("%m_%d_%Y")
+
+# Create folder for today (e.g. Output_05_26_2025)
+output_dir = f"Output_{today_str}"
+os.makedirs(output_dir, exist_ok=True)
+
+# Set filename path inside that folder
+filename = os.path.join(output_dir, f"Theblock_articles_24h_{today_str}.json")
 
 # Target article URL
 url = "https://www.theblock.co/post/354709/alchemy-acquires-solana-infrastructure-provider-dexterlab-as-it-continues-expansion-beyond-ethereum"
@@ -46,7 +57,7 @@ def get_article_scraperapi(url, debug=False):
 
         article_text = (
             "\n".join(p.get_text(strip=True) for p in paragraphs)
-            if paragraphs else "⚠️ No <p> tags found"
+            if paragraphs else "No <p> tags found"
         )
 
         return {
@@ -59,7 +70,7 @@ def get_article_scraperapi(url, debug=False):
     except Exception as e:
         return {
             "url": url,
-            "url_content": f"❌ ScraperAPI error: {e}",
+            "url_content": f"ScraperAPI error: {e}",
             "source": "The Block"
         }
 
@@ -74,7 +85,7 @@ if __name__ == "__main__":
     print(f"Paragraphs: {article['paragraph_count']}")
 
     # Save result to JSON file
-    with open("theblock_article_scraperapi.json", "w", encoding="utf-8") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         json.dump(article, f, ensure_ascii=False, indent=2)
 
     print("Article saved to theblock_article_scraperapi.json")

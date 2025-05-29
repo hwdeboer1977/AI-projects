@@ -14,8 +14,8 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 today_str = datetime.now().strftime("%m_%d_%Y")
 
 # Select current date or earlier data (if you want to access earlier dates)
-#date_str = today_str
-date_str = "05_27_2025"
+date_str = today_str
+#date_str = "05_27_2025"
 
 file_path = f"Output_{date_str}/summary_with_twitter_{date_str}.json"
 output_path = f"Output_{date_str}/top_10_unique_articles_{date_str}.json"

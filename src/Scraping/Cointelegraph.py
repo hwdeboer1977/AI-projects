@@ -55,7 +55,7 @@ def get_cointelegraph_post_and_content(url):
             return post, url_content, paragraph_count
 
     except Exception as e:
-        print(f"❌ Error fetching article content from {url} → {e}")
+        print(f"Error fetching article content from {url} → {e}")
         return "", "", 0
 
 # Fetch from RSS feed and scrape full content for articles in the last 24 hours
@@ -115,4 +115,4 @@ if __name__ == "__main__":
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(articles, f, ensure_ascii=False, indent=2)
 
-    print(f"\n✅ Saved {len(articles)} articles to {filename}")
+    print(f"\nSaved {len(articles)} articles to {filename}")

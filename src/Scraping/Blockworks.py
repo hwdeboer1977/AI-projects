@@ -5,6 +5,8 @@ import time                           # For sleeps between requests
 import json                           # To save the scraped output
 import os                             # For file handling
 
+
+
 # Blockworks News Scraper
 # Method: Headless browser scraping using undetected-chromedriver (UDC)
 # No RSS feed available — article links are scraped directly from the /news page
@@ -40,8 +42,13 @@ def fetch_html_with_udc(url, debug_name=None, wait_time=5):
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--lang=en-US,en;q=0.9")
 
+
+
+
     # Start headless browser
-    driver = uc.Chrome(options=options)
+    # Force ChromeDriver to match version 136
+    driver = uc.Chrome(options=options, version_main=136)
+
     print(f"Visiting: {url}")
     driver.get(url)
     time.sleep(wait_time)  # Allow time for dynamic content to load

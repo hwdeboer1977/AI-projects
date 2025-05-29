@@ -80,7 +80,7 @@ def get_url_content_udc(url, debug=False):
         return url_content, paragraph_count  
 
     except Exception as e:
-        return f"❌ UDC error: {e}", 0
+        return f"UDC error: {e}", 0
 
 
 # Fetch articles from the RSS feed and scrape full content for those from the last 24h
@@ -125,7 +125,7 @@ def fetch_defiant_articles_24h(debug=False):
 
     return articles
 
-# 🚀 Main runner
+# Main runner
 if __name__ == "__main__":
     DEBUG = False  # Set True to dump HTML of last article
     articles = fetch_defiant_articles_24h(debug=DEBUG)

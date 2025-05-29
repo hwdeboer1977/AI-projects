@@ -1,39 +1,37 @@
+import os
+from datetime import datetime
 
-# Information market colour
-#/home/lupo1977/ai-agent-env/Output_Market_05_28_2025/final_market_colour_text_05_28_2025.json # text for newsletter
-#/home/lupo1977/ai-agent-env/Output_Market_05_28_2025/fear_and_greed_index_05_28_2025.png # fear and greed index
+# Settings
+today_str = datetime.now().strftime("%m_%d_%Y")
 
-# Information news articles
-#/home/lupo1977/ai-agent-env/src/Summarize/logo.png # Nethermind's logo at top left of newsletter
-#/home/lupo1977/ai-agent-env/Output_05_27_2025/top_10_unique_articles_05_27_2025.json # Summary articles
-
-# Information twitter
-#/home/lupo1977/ai-agent-env/Output_Twitter_05_27_2025/top10_tweets_clean_05_27_2025.json
+# Select current date or earlier data (if you want to access earlier dates)
+date_str = today_str
+#date_str = "05_22_2025"
 
 import json
 from datetime import datetime
 
 # === Load market data ===
-with open("Output_Market_05_28_2025/final_market_colour_text_05_28_2025.json", "r") as f:
+with open(f"Output_Market_{date_str}/final_market_colour_text_{date_str}.json", "r") as f:
     market_data = json.load(f)
 
 # === Load article summaries ===
-with open("Output_05_27_2025/top_10_unique_articles_05_27_2025.json", "r") as f:
+with open(f"Output_{date_str}/top_10_unique_articles_{date_str}.json", "r") as f:
     articles = json.load(f)
 
 # === Load tweets ===
-with open("Output_Twitter_05_27_2025/top10_tweets_clean_05_27_2025.json", "r") as f:
+with open(f"Output_Twitter_{date_str}/top10_tweets_clean_{date_str}.json", "r") as f:
     tweets = json.load(f)
 
 # === Build the newsletter object ===
 newsletter = {
-    "date": "05_28_2025",
+    "date": date_str,
     "header_logo": "src/Summarize/logo.png",
     "sections": {
         "market_colour": {
             "text": market_data["market_colour"]["paragraph"],
             "etf_summary": market_data["etf_flows"]["summary"],
-            "fear_and_greed_image": "Output_Market_05_28_2025/fear_and_greed_index_05_28_2025.png"
+            "fear_and_greed_image": f"Output_Market_{date_str}/fear_and_greed_index_{date_str}.png"
         },
         "top_articles": articles,
         "top_tweets": tweets
@@ -41,8 +39,8 @@ newsletter = {
 }
 
 # === Save final newsletter to JSON ===
-output_path = "newsletter_combined_05_28_2025.json"
+output_path = f"newsletter_combined_{date_str}.json"
 with open(output_path, "w", encoding="utf-8") as f:
     json.dump(newsletter, f, indent=2)
 
-print(f"✅ Combined newsletter saved to: {output_path}")
+print(f"Combined newsletter saved to: {output_path}")

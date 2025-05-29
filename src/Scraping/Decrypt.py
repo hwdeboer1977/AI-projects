@@ -63,7 +63,7 @@ def get_url_content_playwright_stealth(url):
             return url_content, paragraph_count
 
     except Exception as e:
-        return f"❌ Stealth Playwright error: {e}"
+        return f"Stealth Playwright error: {e}"
 
 # Fetch and process RSS feed to retrieve full articles published in the last 24 hours
 def fetch_decrypt_last_24h():

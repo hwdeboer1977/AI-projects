@@ -7,6 +7,7 @@ import time # Converts struct_time from RSS to datetime
 import json # Saves output as JSON
 import os
 
+# 29-5-2025: Script is not scraping the articles anymore
 
 # Combines RSS and full scraping: Efficient 24h filtering from RSS + full article scrape using Playwright.
 
@@ -72,7 +73,7 @@ def get_url_content_playwright_beincrypto(url):
 
     # Handle browser or parsing errors
     except Exception as e:
-        return f"❌ Stealth Playwright error: {e}"
+        return f"Stealth Playwright error: {e}"
 
 # RSS + Scrape + Save function: fetch BeInCrypto articles from last 24h
 def fetch_beincrypto_last_24h():

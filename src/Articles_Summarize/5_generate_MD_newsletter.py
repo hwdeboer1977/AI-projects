@@ -31,14 +31,14 @@ lines = [
 
 for i, article in enumerate(articles, 1):
     title = article["title"]
-    source = article["source"]
+    #source = article["source"]
     url = article["url"]
-    retweets = article["twitter_engagement"].get("retweets", 0)
+    #retweets = article["twitter_engagement"].get("retweets", 0)
     summary = article.get("summary", [])
 
     #lines.append("---")
     lines.append(f"## {i}. {title}")
-    lines.append(f"**Source:** {source}  ")
+    #lines.append(f"**Source:** {source}  ")
     #lines.append(f"**Retweets:** {retweets}  ")
     lines.append(f" [Read Article]({url})\n")
 

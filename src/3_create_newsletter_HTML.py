@@ -4,8 +4,8 @@ import os
 
 # Settings
 today_str = datetime.now().strftime("%m_%d_%Y")
-#date_str = today_str
-date_str = "05_27_2025"
+date_str = today_str
+#date_str = "05_28_2025"
 
 md_input = f"newsletter_{date_str}.md"
 html_output = f"newsletter_{date_str}.html"

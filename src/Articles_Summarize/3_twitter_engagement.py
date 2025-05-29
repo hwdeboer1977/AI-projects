@@ -28,11 +28,11 @@ def check_twitter_engagement():
     output_path = f"Output_{date_str}/summary_with_twitter_{date_str}.json"
 
     if not bearer_token:
-        print("❌ Missing TWITTER_BEARER_TOKEN in .env")
+        print("Missing TWITTER_BEARER_TOKEN in .env")
         return
 
     if not os.path.exists(input_path):
-        print(f"❌ File not found: {input_path}")
+        print(f"File not found: {input_path}")
         return
 
     with open(input_path, "r", encoding="utf-8") as f:
@@ -74,17 +74,17 @@ def check_twitter_engagement():
                 )
 
                 if response.status_code == 429:
-                    print(f"⏳ Rate limit hit at article {idx+1}. Sleeping for 15 minutes...")
+                    print(f"Rate limit hit at article {idx+1}. Sleeping for 15 minutes...")
                     time.sleep(15 * 60)
                     continue
 
                 elif response.status_code == 400:
-                    print(f"⚠️ 400 Bad Request for: {title} — skipping.")
+                    print(f"400 Bad Request for: {title} — skipping.")
                     article["twitter_engagement"] = {}
                     continue
 
                 elif response.status_code != 200:
-                    print(f"⚠️ API error ({response.status_code}) for: {title}")
+                    print(f"API error ({response.status_code}) for: {title}")
                     article["twitter_engagement"] = {}
                     continue
 
@@ -100,13 +100,13 @@ def check_twitter_engagement():
                     metrics["quotes"] += m.get("quote_count", 0)
 
                 article["twitter_engagement"] = metrics
-                print(f"✅ [{idx+1}/{total}] {title} → {metrics}")
+                print(f"[{idx+1}/{total}] {title} → {metrics}")
 
             except Exception as e:
-                print(f"❌ Error fetching tweets for '{title}': {str(e)}")
+                print(f"Error fetching tweets for '{title}': {str(e)}")
                 article["twitter_engagement"] = {}
 
-            # 🧠 Save partial results every N articles
+            # Save partial results every N articles
             if (idx + 1) % save_interval == 0:
                 with open(output_path, "w", encoding="utf-8") as f:
                     json.dump(articles, f, indent=2)

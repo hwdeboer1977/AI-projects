@@ -4,14 +4,14 @@ from datetime import datetime
 # === Settings ===
 today_str = datetime.now().strftime("%m_%d_%Y")
 date_str = today_str
-date_str_old = "05_27_2025"
+#date_str_old = "05_28_2025"
 
 # === File Paths ===
 market_file = f"Output_Market_{date_str}/final_market_colour_text_{date_str}.json"
-articles_file = f"Output_{date_str_old}/top_10_unique_articles_{date_str_old}.json"
-tweets_file = f"Output_Twitter_{date_str_old}/top10_tweets_clean_{date_str_old}.json"
+articles_file = f"Output_{date_str}/top_10_unique_articles_{date_str}.json"
+tweets_file = f"Output_Twitter_{date_str}/top10_tweets_clean_{date_str}.json"
 fear_greed_img = f"Output_Market_{date_str}/fear_and_greed_index_{date_str}.png"
-output_md = f"newsletter_{date_str_old}.md"
+output_md = f"newsletter_{date_str}.md"
 
 # === Load JSON Data ===
 with open(market_file, "r", encoding="utf-8") as f:
@@ -27,9 +27,9 @@ with open(tweets_file, "r", encoding="utf-8") as f:
 lines = []
 
 # --- Market Colour ---
-lines.append("# 📰 Daily Crypto Market Pulse")
+lines.append("# Daily Crypto Market Pulse")
 lines.append(f"**Date:** {date_str.replace('_', '-')}\n")
-lines.append("## 📈 Market Colour\n")
+lines.append("## Market Colour\n")
 lines.append(market_data["market_colour"]["paragraph"] + "\n")
 lines.append(market_data["etf_flows"]["summary"] + "\n")
 
@@ -66,4 +66,4 @@ with open(output_md, "w", encoding="utf-8") as f:
     f.write("\n\n".join(lines))
 
 
-print(f"✅ Markdown newsletter saved to {output_md}")
+print(f"Markdown newsletter saved to {output_md}")
