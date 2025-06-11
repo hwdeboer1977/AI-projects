@@ -29,7 +29,7 @@ os.makedirs(output_dir, exist_ok=True)
 
 
 # Set filename path inside that folder
-filename = os.path.join(output_dir, f"Blockworks_articles_24h_h_{today_str}.json")
+filename = os.path.join(output_dir, f"Blockworks_articles_24h_{today_str}.json")
 
 
 # Utility: Fetch page HTML using UDC with optional debugging
