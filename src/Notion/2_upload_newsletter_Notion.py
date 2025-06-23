@@ -3,6 +3,20 @@ import re
 import time
 import requests
 from dotenv import load_dotenv
+import sys
+
+if len(sys.argv) < 2:
+    print("Usage: python 2_upload_newsletter_Notion_v2.py <MM_DD_YYYY>")
+    sys.exit(1)
+
+date = sys.argv[1]
+newsletters = [
+    {
+        "date": date,
+        "md_path": f"newsletter_{date}.md",
+        #"img_path": f"Output_Market_{date}/fear_and_greed_index_{date}_small.png"
+    }
+]
 
 # === ENV SETUP ===
 load_dotenv("src/.env")
@@ -75,7 +89,8 @@ def upload_image(path):
         time.sleep(1)
     raise RuntimeError("Upload timed out")
 
-def parse_markdown_with_image(md_path, upload_id):
+#def parse_markdown_with_image(md_path, upload_id):
+def parse_markdown_with_image(md_path, upload_id=None):
     blocks = []
     lines = open(md_path, "r", encoding="utf-8").read().splitlines()
     i = 0
@@ -86,6 +101,10 @@ def parse_markdown_with_image(md_path, upload_id):
         if raw.startswith("<img") and raw.endswith("/>"):
             i += 1
             continue
+
+        if raw.startswith("## 😨 Fear & Greed Index"):
+            i += 1
+            continue        
 
         # 2) Skip the Markdown “# Daily Crypto Market Pulse” and “Date: …” lines
         if raw.startswith("# Daily Crypto Market Pulse") or raw.startswith("**Date:"):
@@ -98,28 +117,15 @@ def parse_markdown_with_image(md_path, upload_id):
             i += 1
             continue
 
-        # 4) Fear & Greed → chart only (no heading text)
-        if "Fear & Greed" in raw:
-            blocks.append({
-                "object": "block",
-                "type": "image",
-                "image": {
-                    "type": "file_upload",
-                    "file_upload": {"id": upload_id}
-                }
-            })
-            i += 1
-            continue
-
         # 5) Top 10 News Articles → heading_2
-        if raw.startswith("## 🗞️ Top 10 News Articles"):
-            blocks.append(make_heading(2, "🗞️ Top 10 News Articles"))
+        if raw.startswith("## 🐦 Top 5 Social Sentiment"):
+            blocks.append(make_heading(2, "🐦 Top 5 Social Sentiment"))
             i += 1
             continue
 
         # 6) Top 10 Crypto Tweets → heading_2
-        if raw.startswith("## 🐦 Top 10 Crypto Tweets"):
-            blocks.append(make_heading(2, "🐦 Top 10 Crypto Tweets"))
+        if raw.startswith("## 🗞️ Top 5 News Articles"):
+            blocks.append(make_heading(2, "🗞️ Top 5 News Articles"))
             i += 1
             continue
 
@@ -191,15 +197,17 @@ def create_newsletter_subpage(title,blocks):
     print(f"✅ Created {title}")
 
 # === MAIN ===
-newsletters=[
-  #{"date":"06_03_2025","md_path":"newsletter_06_03_2025.md","img_path":"Output_Market_06_03_2025/fear_and_greed_index_06_03_2025_small.png"},
-  {"date":"06_04_2025","md_path":"newsletter_06_04_2025.md","img_path":"Output_Market_06_04_2025/fear_and_greed_index_06_04_2025_small.png"},
-  {"date":"06_05_2025","md_path":"newsletter_06_05_2025.md","img_path":"Output_Market_06_05_2025/fear_and_greed_index_06_05_2025_small.png"}
-]
+# newsletters=[
+#   #{"date":"06_12_2025","md_path":"newsletter_06_12_2025.md","img_path":"Output_Market_06_12_2025/fear_and_greed_index_06_12_2025_small.png"},
+#   #{"date":"06_13_2025","md_path":"newsletter_06_13_2025.md","img_path":"Output_Market_06_13_2025/fear_and_greed_index_06_13_2025_small.png"}
+#   #{"date":"06_16_2025","md_path":"newsletter_06_16_2025.md","img_path":"Output_Market_06_16_2025/fear_and_greed_index_06_16_2025_small.png"}
+#   {"date":"06_17_2025","md_path":"newsletter_06_17_2025.md","img_path":"Output_Market_06_17_2025/fear_and_greed_index_06_17_2025_small.png"}
+# ]
 
 for nl in newsletters:
     title=f"Newsletter {nl['date']}"
     print("📦",title)
-    uid=upload_image(nl["img_path"])
-    blks=parse_markdown_with_image(nl["md_path"],uid)
+    #uid=upload_image(nl["img_path"])
+    #blks=parse_markdown_with_image(nl["md_path"],uid)
+    blks=parse_markdown_with_image(nl["md_path"])
     create_newsletter_subpage(title,blks)

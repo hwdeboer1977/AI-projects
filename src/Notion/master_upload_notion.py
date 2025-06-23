@@ -4,7 +4,7 @@
 from datetime import datetime
 import subprocess
 
-subprocess.run(["python3", "src/Notion/0_remove_all_Notion.py"], check=True)
+#subprocess.run(["python3", "src/Notion/0_remove_all_Notion.py"], check=True)
 
 
 
@@ -15,7 +15,7 @@ dates = [
     #"06_12_2025"
 ]
 date = datetime.now().strftime("%m_%d_%Y")
-#date = "06_12_2025"
+#date = "06_17_2025"
 
 
 # for date in dates:
@@ -25,6 +25,11 @@ date = datetime.now().strftime("%m_%d_%Y")
 # subprocess.run(["python3", "src/Notion/1_resize_image.py", file_name], check=True)
 
 
-subprocess.run(["python3", "src/Notion/2_upload_newsletter_Notion.py"], check=True)
+#subprocess.run(["python3", "src/Notion/2_upload_newsletter_Notion.py"], check=True)
 
-subprocess.run(["python3", "src/Notion/2_upload_newsletter_Notion_v2.py"], check=True)
+
+# Step 2: Call the upload script with the date
+subprocess.run(
+    ["python3", "src/Notion/2_upload_newsletter_Notion.py", date],
+    check=True
+)
