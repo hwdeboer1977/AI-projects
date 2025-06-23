@@ -11,7 +11,7 @@ from datetime import datetime, timedelta  # Date filtering
 import time  # Convert struct_time to datetime
 import json  # Save output as JSON
 import os
-
+import html
 
 # Format today's date
 today_str = datetime.now().strftime("%m_%d_%Y")
@@ -77,7 +77,9 @@ def fetch_cointelegraph_last_24h():
         if published_dt < cutoff:
             continue  # Skip old articles
 
-        title = entry.get("title", "").strip()
+        # title = entry.get("title", "").strip()
+        title = html.unescape(entry.get("title", "").strip())
+
         url = entry.get("link", "").strip()
 
         print(f"[{published_dt}] Scraping: {title}")

@@ -13,7 +13,7 @@ from datetime import datetime, timedelta  # Time window filtering
 import time  # Timestamp parsing
 import json  # Save articles to JSON
 import os
-
+import html
 
 # Format today's date
 today_str = datetime.now().strftime("%m_%d_%Y")
@@ -84,7 +84,8 @@ def fetch_decrypt_last_24h():
         if published_dt < cutoff:
             continue # Skip if older than 24h
 
-        title = entry.get("title", "").strip()
+        #title = entry.get("title", "").strip()
+        title = html.unescape(entry.get("title", "").strip())
         link = entry.get("link", "").strip()
         
         # Clean description (summary) from RSS

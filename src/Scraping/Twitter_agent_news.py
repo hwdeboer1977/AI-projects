@@ -1,106 +1,87 @@
-import requests
-import datetime
-import json
+import requests, json, os, datetime
 from dotenv import load_dotenv
-import os
-import time
+from credit_logger import get_current_credits, log_credits
 
-# 1. Initialize your target usernames
+# Get credits API before running script
+credits_before = get_current_credits()
+
+
+# ✅ 1. Configuration
+load_dotenv()
+API_KEY = os.getenv("TWITTER_IO_API")
+if not API_KEY:
+    raise ValueError("Missing TWITTER_IO_API in .env")
+
+headers = {"x-api-key": API_KEY}
+url = "https://api.twitterapi.io/twitter/user/last_tweets"
+
+# Target usernames
 usernames = [
-    "coindesk", "cointelegraph", "decryptmedia", "beincrypto",
+    "coindesk", 
+    "cointelegraph", "decryptmedia", "beincrypto",
     "DefiantNews", "Blockworks_", "TheBlock__"
 ]
 
-# 2. Load API key
-load_dotenv()
-BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
-if not BEARER_TOKEN:
-    raise ValueError("TWITTER_BEARER_TOKEN not found in .env file")
+# 24‑hour cutoff
+cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=1)
 
-# 3. Time window
-now = datetime.datetime.utcnow().replace(microsecond=0)
-start_time = (now - datetime.timedelta(days=1)).isoformat() + "Z"
+# Create output folder
+today_str = datetime.datetime.utcnow().strftime("%m_%d_%Y")
+output_dir = f"Output_Twitter_{today_str}"
+os.makedirs(output_dir, exist_ok=True)
 
-def create_headers(token):
-    return {"Authorization": f"Bearer {token}"}
-
-# Retry wrapper for rate-limited requests
-def fetch_with_retry(url, params=None, wait_time=900):
-    while True:
-        response = requests.get(url, headers=create_headers(BEARER_TOKEN), params=params)
-        print(f"API Status: {response.status_code} | URL: {response.url}")
-        if response.status_code == 429:
-            print("Rate limit hit! Waiting 15 minutes...")
-            time.sleep(wait_time)
-            continue
-        response.raise_for_status()
-        return response.json()
-
-def get_user_id(username):
-    url = f"https://api.twitter.com/2/users/by/username/{username}"
-    print(f"Getting user ID for {username}")
-    data = fetch_with_retry(url)
-    return data["data"]["id"]
-
-def get_recent_tweets(user_id, max_results=50):
-    url = f"https://api.twitter.com/2/users/{user_id}/tweets"
-    params = {
-        "max_results": max_results,
-        "tweet.fields": "created_at,public_metrics",
-        "start_time": start_time
-    }
-    data = fetch_with_retry(url, params=params)
-    if "data" not in data:
-        print("No tweets returned in the last 24 hours.")
-        return []
-    return data.get("data", [])
-
-def extract_fields(tweet, username):
-    post = tweet.get("text", "")
-    title = " ".join(post.split()[:12])
-    tweet_id = tweet["id"]
-    url = f"https://x.com/{username}/status/{tweet_id}"
-    metrics = tweet.get("public_metrics", {})
-    return {
-        "title": title,
-        "post": post,
-        "url": url,
-        "views": metrics.get("impression_count", "N/A"),
-        "reposts": metrics.get("retweet_count", 0),
-        "created_at": tweet.get("created_at")
-    }
-
-# Main logic
+# ✅ 2. Main loop
 if __name__ == "__main__":
-    today_str = datetime.datetime.now().strftime("%m_%d_%Y")
-    output_dir = f"Output_Twitter_{today_str}"
-    os.makedirs(output_dir, exist_ok=True)
-
     for username in usernames:
-        print(f"\nFetching tweets for: {username}")
+        print(f"\n📡 Fetching tweets for: {username}")
         try:
-            user_id = get_user_id(username)
-            print(f"{username} → user_id: {user_id}")
-            tweets = get_recent_tweets(user_id)
+            # Fetch latest tweets
+            params = {"userName": username, "count": 20}
+            resp = requests.get(url, headers=headers, params=params)
+            resp.raise_for_status()
+            tweets = resp.json().get("data", {}).get("tweets", [])
+            results = []
 
-            if not tweets:
-                print(f"ℹNo tweets from {username} in the last 24 hours.\n" + "-" * 60)
-                continue
+            # Filter tweets
+            for t in tweets:
+                created = datetime.datetime.strptime(
+                    t["createdAt"], "%a %b %d %H:%M:%S %z %Y"
+                ).astimezone(datetime.timezone.utc).replace(tzinfo=None)
+                if created < cutoff:
+                    continue
 
-            results = [extract_fields(tweet, username) for tweet in tweets]
+                # Find external article link
+                exp_link = None
+                for u in t.get("entities", {}).get("urls", []):
+                    url_exp = u.get("expanded_url")
+                    if url_exp and "twitter.com" not in url_exp and "x.com" not in url_exp:
+                        exp_link = url_exp
+                        break
+                if not exp_link:
+                    continue
 
-            for i, r in enumerate(results, 1):
-                print(f"[{i}] {r['title']}")
-                print(f" {r['post'][:80]}...")
-                print(f" Reposts: {r['reposts']} | Views: {r['views']}")
-                print(f" {r['created_at']} | 🔗 {r['url']}")
-                print("-" * 60)
+                results.append({
+                    "id": t["id"],
+                    "text": t["text"],
+                    "createdAt": t["createdAt"],
+                    "url": t["url"],
+                    "article_link": exp_link,
+                    "likeCount": t.get("likeCount", 0),
+                    "retweetCount": t.get("retweetCount", 0),
+                    "viewCount": t.get("viewCount", 0)
+                })
 
-            out_file = os.path.join(output_dir, f"Twitter_{username}_24h_{today_str}.json")
-            with open(out_file, "w", encoding="utf-8") as f:
-                json.dump(results, f, ensure_ascii=False, indent=2)
+            print(f"✅ @{username}: {len(results)} tweets with article links in past 24h")
 
-            print(f"\nSaved {len(results)} tweets to {out_file}")
+            # Save per‑user JSON
+            out_path = os.path.join(output_dir, f"{username}_links_{today_str}.json")
+            with open(out_path, "w", encoding="utf-8") as f:
+                json.dump(results, f, indent=2, ensure_ascii=False)
+            print(f"💾 Saved → {out_path}")
 
         except Exception as e:
-            print(f"Failed to fetch tweets for {username}: {e}")
+            print(f"❌ Failed for {username}: {e}")
+
+# Get credits API after running script
+credits_after = get_current_credits()
+log_credits(credits_before, credits_after)

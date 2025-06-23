@@ -13,6 +13,7 @@ import json
 from datetime import datetime, timedelta
 import time
 import os
+import html
 
 
 # Format today's date
@@ -55,7 +56,9 @@ def fetch_coindesk_last_24h():
         if published_dt < cutoff:
             continue  # Skip articles older than 24h
 
-        title = entry.get("title", "").strip()
+        #title = entry.get("title", "").strip()
+        title = html.unescape(entry.get("title", "").strip())
+
         link = entry.get("link", "").strip()
 
          # Match against raw XML <item> to extract <description> text
