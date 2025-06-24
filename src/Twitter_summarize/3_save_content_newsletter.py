@@ -20,7 +20,7 @@ with open(input_path, "r", encoding="utf-8") as f:
 top_10 = sorted(tweets, key=lambda x: x.get("engagement_score", 0), reverse=True)[:10]
 
 # Reduce to only post and url
-minimal_data = [{"post": tweet["post"], "url": tweet["url"]} for tweet in top_10]
+minimal_data = [{"post": tweet["text"], "url": tweet["url"], "article_link": tweet["article_link"]} for tweet in top_10]
 
 # Save valid JSON
 with open(output_json, "w", encoding="utf-8") as f:

@@ -4,7 +4,8 @@ from datetime import datetime
 
 # Settings
 today_str = datetime.now().strftime("%m_%d_%Y")
-date_str = "05_27_2025"  # Or use today_str
+#date_str = "05_27_2025"  # Or use today_str
+date_str = today_str
 
 input_path = f"Output_Twitter_{date_str}/top10_tweets_clean_{date_str}.json"
 output_path = f"Output_Twitter_{date_str}/top10_tweets_clean_{date_str}.html"

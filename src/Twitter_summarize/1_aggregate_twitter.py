@@ -46,14 +46,14 @@ def clean_text(text):
 
 # Aggregate tweets
 all_tweets = []
-for path in glob.glob(f"Output_Twitter_{date_str}/Twitter_*.json"):
+for path in glob.glob(f"Output_Twitter_{date_str}/*.json"):
     with open(path, "r", encoding="utf-8") as f:
         tweets = json.load(f)
         all_tweets.extend(tweets)
 
 # Score and sort
 def engagement_score(tweet):
-    return tweet.get("reposts", 0) * 10 + tweet.get("views", 0)
+    return tweet.get("retweetCount", 0) * 10 + tweet.get("viewCount", 0)
 
 for tweet in all_tweets:
     tweet["engagement_score"] = engagement_score(tweet)
@@ -65,7 +65,7 @@ valid_tweets = []
 cleaned_texts = []
 
 for tweet in top_tweets:
-    text = clean_text(tweet.get("post", ""))
+    text = clean_text(tweet.get("text", ""))
     if text:
         cleaned_texts.append(text)
         valid_tweets.append(tweet)
@@ -97,8 +97,9 @@ for i, tweet in enumerate(valid_tweets):
     top_similar = sorted(similarities, key=lambda x: x[1], reverse=True)[:3]
     tweet["similar_tweets"] = [
         {
-            "title": valid_tweets[j]["title"],
-            "url": valid_tweets[j]["url"],
+            "title": valid_tweets[j].get("title", valid_tweets[j].get("text", ""))[:100],
+            "url": valid_tweets[j].get("url"),
+            "article_link": valid_tweets[j].get("article_link", None),
             "similarity": round(score, 3)
         }
         for j, score in top_similar
@@ -109,7 +110,6 @@ with open(output_path, "w", encoding="utf-8") as f:
     json.dump(valid_tweets, f, indent=2, ensure_ascii=False)
 
 print(f"Saved labeled tweets to {output_path}")
-
 
 
 

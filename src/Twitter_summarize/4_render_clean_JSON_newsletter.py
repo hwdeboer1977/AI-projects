@@ -39,7 +39,8 @@ for tweet in tweets[:10]:
     cleaned_tweet = {
         #"title": tweet.get("title", ""),
         "post": clean_text(tweet.get("post", "")),
-        "url": tweet.get("url", "")
+        "url": tweet.get("url", ""),
+        "article_link": tweet.get("article_link", "")
     }
     cleaned_tweets.append(cleaned_tweet)
 
