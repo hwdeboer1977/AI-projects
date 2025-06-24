@@ -46,6 +46,13 @@ full_html = f"""<!DOCTYPE html>
             height: auto;
             margin-top: 1rem;
         }}
+        logo {{
+            float: left;
+            margin-right: 20px;
+            margin-bottom: 10px;
+            max-width: 100px;
+            height: auto;
+        }}
         ul {{
             padding-left: 1.2rem;
         }}
