@@ -7,119 +7,99 @@ import urllib.parse
 from dotenv import load_dotenv
 from datetime import datetime
 
-# Load .env
+# ——————————————————————————————
+# ✅ 1. Config & Setup
 load_dotenv()
-bearer_token = os.getenv("TWITTER_BEARER_TOKEN")
+API_KEY = os.getenv("TWITTER_IO_API")
+if not API_KEY:
+    raise ValueError("Missing TWITTER_IO_API in .env")
 
-# Settings
-today_str = datetime.now().strftime("%m_%d_%Y")
+HEADERS = {"x-api-key": API_KEY}
 
-# Select current date or earlier data (if you want to access earlier dates)
+# ——————————————————————————————
+# 📆 2. Date settings
+today_str = datetime.utcnow().strftime("%m_%d_%Y")
+#date_str = "06_12_2025"  # or today_str
 date_str = today_str
-#date_str = "05_22_2025"
 
-# Clean title/keywords for Twitter query
+INPUT_PATH = f"Output_{date_str}/summary_filtered_{date_str}.json"
+OUTPUT_PATH = f"Output_{date_str}/summary_with_twitter_{date_str}.json"
+
 def clean(text):
-    return re.sub(r'[^\w\s\-]', '', text).strip()
+    """Remove non-alphanumeric characters (except space/hyphen)."""
+    return re.sub(r"[^\w\s\-]", "", text).strip()
 
 def check_twitter_engagement():
-   
-    input_path = f"Output_{date_str}/summary_filtered_{date_str}.json"
-    output_path = f"Output_{date_str}/summary_with_twitter_{date_str}.json"
-
-    if not bearer_token:
-        print("Missing TWITTER_BEARER_TOKEN in .env")
+    if not os.path.exists(INPUT_PATH):
+        print(f"❌ File not found: {INPUT_PATH}")
         return
 
-    if not os.path.exists(input_path):
-        print(f"File not found: {input_path}")
-        return
-
-    with open(input_path, "r", encoding="utf-8") as f:
+    with open(INPUT_PATH, "r", encoding="utf-8") as f:
         articles = json.load(f)
 
-    headers = {"Authorization": f"Bearer {bearer_token}"}
     total = len(articles)
     save_interval = 5
 
-    try:
-        for idx, article in enumerate(articles):
-            title = article.get("title", "")
-            url = article.get("url", "")
-            keywords = article.get("keywords", [])[:2]
+    for idx, article in enumerate(articles, 1):
+        title = article.get("title", "").strip()
+        url = article.get("url", "")
+        keywords = article.get("keywords", [])[:2]
 
-            if not title:
-                continue
+        if not title:
+            article["twitter_engagement"] = {}
+            continue
 
-            clean_title = clean(title)
-            clean_keywords = [clean(k) for k in keywords]
+        # Build search query
+        qt = f"\"{clean(title)}\""
+        kq = " OR ".join(clean(k) for k in keywords if k)
+        uq = urllib.parse.quote(url.split("?")[0])
+        query_parts = [qt] + ([kq] if kq else []) + [uq]
+        query = " OR ".join(query_parts)
 
-            short_url = url.split("?")[0] if "?" in url else url
-            encoded_url = urllib.parse.quote(short_url)
-
-            query_parts = [f"\"{clean_title}\""] + clean_keywords + [encoded_url]
-            query = " OR ".join(query_parts)
-
-            params = {
+        # Call twitterapi.io advanced search
+        resp = requests.get(
+            "https://api.twitterapi.io/twitter/tweet/advanced_search",
+            headers=HEADERS,
+            params={
                 "query": query,
-                "max_results": 10,
-                "tweet.fields": "public_metrics"
+                "queryType": "Latest"
             }
+        )
 
-            try:
-                response = requests.get(
-                    "https://api.twitter.com/2/tweets/search/recent",
-                    headers=headers,
-                    params=params
-                )
+        if resp.status_code == 429:
+            print(f"🔁 Rate limit hit at article {idx}/{total}. Sleeping 15 minutes...")
+            time.sleep(15 * 60)
+            continue
 
-                if response.status_code == 429:
-                    print(f"Rate limit hit at article {idx+1}. Sleeping for 15 minutes...")
-                    time.sleep(15 * 60)
-                    continue
+        if resp.status_code != 200:
+            print(f"❌ Error {resp.status_code} for idx {idx}: {title[:50]}… Skipping.")
+            article["twitter_engagement"] = {}
+            continue
 
-                elif response.status_code == 400:
-                    print(f"400 Bad Request for: {title} — skipping.")
-                    article["twitter_engagement"] = {}
-                    continue
+        # Aggregate engagement from tweets
+        tweets = resp.json().get("tweets", [])
+        metrics = {"likes": 0, "retweets": 0, "replies": 0, "quotes": 0}
+        for t in tweets:
+            metrics["likes"] += t.get("likeCount", 0)
+            metrics["retweets"] += t.get("retweetCount", 0)
+            metrics["replies"] += t.get("replyCount", 0)
+            metrics["quotes"] += t.get("quoteCount", 0)
 
-                elif response.status_code != 200:
-                    print(f"API error ({response.status_code}) for: {title}")
-                    article["twitter_engagement"] = {}
-                    continue
+        article["twitter_engagement"] = metrics
+        print(f"[{idx}/{total}] {title[:60]} → {metrics}")
 
+        # Periodic save
+        if idx % save_interval == 0:
+            with open(OUTPUT_PATH, "w", encoding="utf-8") as fw:
+                json.dump(articles, fw, indent=2)
+            print(f"💾 Partial save at article {idx}/{total}")
 
-                tweets = response.json().get("data", [])
-                metrics = {"likes": 0, "retweets": 0, "replies": 0, "quotes": 0}
+        time.sleep(1.2)
 
-                for tweet in tweets:
-                    m = tweet.get("public_metrics", {})
-                    metrics["likes"] += m.get("like_count", 0)
-                    metrics["retweets"] += m.get("retweet_count", 0)
-                    metrics["replies"] += m.get("reply_count", 0)
-                    metrics["quotes"] += m.get("quote_count", 0)
-
-                article["twitter_engagement"] = metrics
-                print(f"[{idx+1}/{total}] {title} → {metrics}")
-
-            except Exception as e:
-                print(f"Error fetching tweets for '{title}': {str(e)}")
-                article["twitter_engagement"] = {}
-
-            # Save partial results every N articles
-            if (idx + 1) % save_interval == 0:
-                with open(output_path, "w", encoding="utf-8") as f:
-                    json.dump(articles, f, indent=2)
-                print(f"💾 Auto-saved at article {idx+1}")
-
-            time.sleep(1.2)  # Respect rate limits
-
-    except KeyboardInterrupt:
-        print("\n Interrupted by user. Saving partial results...")
-    finally:
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(articles, f, indent=2)
-        print(f"Final results saved to {output_path}")
+    # Final save
+    with open(OUTPUT_PATH, "w", encoding="utf-8") as fw:
+        json.dump(articles, fw, indent=2)
+    print(f"✅ Final results saved to {OUTPUT_PATH}")
 
 if __name__ == "__main__":
     check_twitter_engagement()

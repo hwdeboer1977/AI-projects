@@ -18,7 +18,7 @@ today_str = datetime.now().strftime("%m_%d_%Y")
 
 # Select current date or earlier data (if you want to access earlier dates)
 date_str = today_str
-#date_str = "05_22_2025"
+#date_str = "06_12_2025"
 
 @function_tool
 def detect_cross_posting(ctx: RunContextWrapper[Any], threshold: float = 0.85) -> str:

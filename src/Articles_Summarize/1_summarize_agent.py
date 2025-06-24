@@ -23,7 +23,7 @@ today_str = datetime.now().strftime("%m_%d_%Y")
 
 # Select current date or earlier data (if you want to access earlier dates)
 date_str = today_str
-#date_str = "05_22_2025"
+#date_str = "06_12_2025"
 
 # Summarizer tool
 @function_tool
@@ -38,7 +38,8 @@ def summarize_all_sources(ctx: RunContextWrapper[Any], count_per_source: int = 4
         "Defiant",
         "BeInCrypto",
         "Blockworks",
-        "Coindesk"
+        "Coindesk",
+        "Defiant"
     ]
 
     markdown_output = "# Daily Crypto Summary\n\n"
