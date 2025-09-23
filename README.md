@@ -56,6 +56,7 @@ GOOGLE_SERVICE_ACCOUNT_JSON=C:/full/path/to/your-service-account.json
 Run each bot from the repo root:
 
 ```bash
+.\.venv\Scripts\Activate.ps1
 python src/Fitness_agent.py
 python src/Nutrition_agent.py
 ```
