@@ -1,0 +1,29 @@
+# Ignore Python virtual environments
+venv/
+.env
+*.log
+.venv/
+
+# Ignore documentation examples
+/src/examplesDocs/
+
+# Ignore all daily scraped/saved JSONs and Markdown
+*.json
+newsletter*
+summary*.md
+*.xlsx
+*.pdf
+
+# Ignore old files
+src/OLD_FILES/
+
+# Ignore backup or checkpoint files
+*BACKUP.json
+*checkpoint*
+
+# Ignore Windows Zone.Identifier metadata
+*:Zone.Identifier
+
+# Ignore Python bytecode
+__pycache__/
+*.pyc
