@@ -1,0 +1,36 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.log
+
+# Virtual environment
+venv/
+env/
+.ai-agent-env/
+bin/
+lib/
+lib64/
+debug/
+/lib64/
+output*/
+/output*
+Old_code/
+include/
+*.env
+pyvenv.cfg
+*.json
+newsletter*
+summary*.md
+chromedriver*
+Output*
+
+# VS Code settings
+.vscode/
+
+# Jupyter notebooks checkpoints (if any)
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
