@@ -1,0 +1,10 @@
+.env*
+*.env
+node_modules
+src/data
+src/output
+src/tmp
+src/tools
+tmp/
+account*
+eng*
