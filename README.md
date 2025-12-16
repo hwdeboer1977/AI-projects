@@ -1,6 +1,6 @@
 # AI Projects Monorepo
 
-This repository contains multiple AI-related applications combined into a single monorepo.
+This repository contains multiple AI-related applications combined into a single monorepo.  
 Each project keeps its own folder, dependencies, and structure. Some projects run natively on Windows, others inside WSL (Ubuntu).
 
 This monorepo supports:
@@ -29,10 +29,15 @@ AI-Projects/
 │   - Automation tools
 │   Originally developed on Windows.
 │
-└── Agentic-Newsletter/
-    An autonomous news discovery, clustering, and summarization pipeline.
-    Includes narrative tracking, overlap detection, and thematic analysis.
-    Originally developed in WSL (Ubuntu).
+├── Agentic-Newsletter/
+│   An autonomous news discovery, clustering, and summarization pipeline.
+│   Includes narrative tracking, overlap detection, and thematic analysis.
+│   Originally developed in WSL (Ubuntu).
+│
+└── Web-Summarization-Agent/
+    An AI-powered web page summarization engine.
+    Fetches a web page, extracts readable content, and generates
+    structured summaries using LLMs.
 ```
 
 ---
@@ -53,7 +58,7 @@ A production-ready accounting agent that:
 - Stores parsed JSON locally for debugging (`src/output/`)
 
 Technologies:  
-**OpenAI Responses API, Tesseract.js, node-telegram-bot-api, google-spreadsheet**
+**OpenAI API, Tesseract.js, node-telegram-bot-api, google-spreadsheet**
 
 ---
 
@@ -73,13 +78,46 @@ Runs natively on Windows — no WSL required.
 
 A Linux-native (WSL Ubuntu) autonomous agent system that:
 
-- Fetches news (RSS & APIs)
-- Performs article clustering / similarity detection
+- Fetches news from RSS feeds and APIs
+- Performs article clustering and similarity detection
 - Summarizes grouped news items
 - Generates executive summaries
-- Tracks narratives and theme evolution
+- Tracks narratives and theme evolution over time
 
-Ideal for creating newsletters or automated daily briefs.
+Ideal for:
+
+- Newsletters
+- Automated daily briefs
+- Narrative and sentiment analysis pipelines
+
+---
+
+### **4. Web-Summarization-Agent (Web Page → Structured Summary)**
+
+An experimental **AI-powered web page summarization agent** that:
+
+- Fetches and renders a single web page
+- Extracts readable main content using Mozilla Readability
+- Converts HTML to Markdown
+- Supports long documents via chunking (map → reduce)
+- Generates structured summaries using an LLM
+
+The project explicitly supports **two summarization modes**:
+
+- **Enriched mode** (`summarize_add.js`)  
+  Generates learning-oriented, study-note style summaries  
+  (may include background knowledge)
+
+- **Strict / Grounded mode** (`summarize_strict.js`)  
+  Produces source-faithful summaries only  
+  Missing concepts are explicitly marked as:  
+  **“Not covered on this page.”**
+
+This project serves as the foundation for:
+
+- a backend summarization API
+- a web app (paste URL → summary)
+- a browser side-panel extension (summarize current page)
 
 ---
 
@@ -91,6 +129,7 @@ These include:
 
 - `AI-Accounting-Agent`
 - `AI-Agents`
+- `Web-Summarization-Agent` (CLI tools)
 
 Open normally in Windows VS Code:
 
@@ -125,10 +164,12 @@ code .
 
 ## 🚀 Future Projects
 
-More AI-based tools will be added, such as:
+Planned additions to this monorepo include:
 
+- Backend summarization API for web and browser clients
+- Browser side-panel summarization extension
 - Agentic portfolio optimizer
-- Market intelligence bot
+- Market intelligence and monitoring bots
 - Business automation tools
 - Additional Telegram-based agents
 
@@ -138,4 +179,4 @@ More AI-based tools will be added, such as:
 
 **H.W. de Boer**  
 AI & Blockchain Engineer  
-https://blockstatsolutions.com
+http
