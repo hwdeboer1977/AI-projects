@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web Summary Agent</title>
+    <link rel="stylesheet" href="./styles.css" />
+
+    <!-- Markdown renderer -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <header class="header">
+        <h1>Web Summary Agent</h1>
+        <p>Paste a URL → choose strict/add → get a summary.</p>
+      </header>
+
+      <section class="card">
+        <label class="label">Backend URL</label>
+        <input id="apiBase" class="input" value="http://localhost:4000" />
+
+        <label class="label">URL</label>
+        <input
+          id="url"
+          class="input"
+          placeholder="https://developers.google.com/machine-learning/crash-course/..."
+        />
+
+        <div class="row">
+          <div class="col">
+            <label class="label">Mode</label>
+            <select id="mode" class="input">
+              <option value="strict">Strict (source-only)</option>
+              <option value="add">Add (LLM context)</option>
+            </select>
+          </div>
+
+          <div class="col">
+            <label class="label">Depth</label>
+            <select id="depth" class="input">
+              <option value="short">Short</option>
+              <option value="medium" selected>Medium</option>
+              <option value="long">Long</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row actions">
+          <button id="summarizeBtn" class="btn primary">Summarize</button>
+          <button id="copyBtn" class="btn" disabled>Copy Markdown</button>
+          <button id="clearBtn" class="btn">Clear</button>
+        </div>
+
+        <div id="status" class="status"></div>
+      </section>
+
+      <section class="card">
+        <div class="meta">
+          <div><strong>Title:</strong> <span id="title">—</span></div>
+          <div>
+            <strong>Final URL:</strong>
+            <a id="finalUrl" href="#" target="_blank" rel="noreferrer">—</a>
+          </div>
+        </div>
+
+        <div class="split">
+          <div class="panel">
+            <h3>Markdown</h3>
+            <textarea
+              id="markdown"
+              class="textarea"
+              placeholder="Summary markdown will appear here..."
+            ></textarea>
+          </div>
+          <div class="panel">
+            <h3>Preview</h3>
+            <div id="preview" class="preview">Nothing yet.</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -7,14 +7,19 @@ import TurndownService from "turndown";
 import OpenAI from "openai";
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
+import { fileURLToPath } from "url";
 
-// TO USE:
-// node summarize_add.js "https://developers.google.com/machine-learning/crash-course/linear-regression" --depth long
+// Original source ref: :contentReference[oaicite:1]{index=1}
+// CLI:
+// node src/summarize_add.js "https://example.com" --depth long --out ./outputs
+// API usage:
+// import { summarizeAdd } from "./summarize_add.js";
+// const r = await summarizeAdd({ url, depth: "medium" });
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 /* -------------------------------------------------- */
-/* CLI + utils                                        */
+/* Utils                                              */
 /* -------------------------------------------------- */
 
 function parseArgs(argv) {
@@ -51,6 +56,12 @@ function safeFileName(name) {
       .slice(0, 120)
       .trim() || "summary"
   );
+}
+
+function depthConfig(depth) {
+  if (depth === "short") return { bullets: "6–8", tokens: 700 };
+  if (depth === "long") return { bullets: "14–18", tokens: 2200 };
+  return { bullets: "10–14", tokens: 1400 };
 }
 
 /* -------------------------------------------------- */
@@ -117,15 +128,9 @@ function chunkText(text, size = 8000) {
 /* Summarization                                      */
 /* -------------------------------------------------- */
 
-function depthConfig(depth) {
-  if (depth === "short") return { bullets: "6–8", tokens: 700 };
-  if (depth === "long") return { bullets: "14–18", tokens: 2200 };
-  return { bullets: "10–14", tokens: 1400 };
-}
-
-async function summarizeChunk(chunk, idx) {
+async function summarizeChunk(chunk, idx, { model }) {
   const resp = await openai.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model,
     temperature: 0.2,
     max_tokens: 700,
     messages: [
@@ -146,11 +151,11 @@ ${chunk}
   return resp.choices[0].message.content.trim();
 }
 
-async function mergeSummaries(url, title, summaries, depth) {
+async function mergeSummaries(url, title, summaries, depth, { model }) {
   const cfg = depthConfig(depth);
 
   const resp = await openai.chat.completions.create({
-    model: "gpt-4.1-mini",
+    model,
     temperature: 0.2,
     max_tokens: cfg.tokens,
     messages: [
@@ -188,69 +193,122 @@ ${summaries.join("\n\n")}
 }
 
 /* -------------------------------------------------- */
-/* Main                                               */
+/* Public API                                         */
 /* -------------------------------------------------- */
 
-async function main() {
-  const { url, outDir, depth, noCache } = parseArgs(process.argv);
-  if (!url) {
-    console.error(
-      'Usage: node summarize.js "<url>" [--depth short|medium|long]'
-    );
-    process.exit(1);
+/**
+ * Summarize a URL in "add context" mode.
+ *
+ * If outDir is provided, files/caches are written (CLI behavior).
+ * If outDir is omitted, it returns the result only (API behavior).
+ */
+export async function summarizeAdd({
+  url,
+  depth = "medium",
+  outDir, // optional (enable file writes)
+  noCache = false,
+  model = "gpt-4.1-mini",
+  chunkSize = 8000,
+} = {}) {
+  if (!url) throw new Error("Missing url");
+
+  // Setup dirs only if writing outputs
+  let cacheDir, htmlPath, mdPath;
+  if (outDir) {
+    fs.mkdirSync(outDir, { recursive: true });
+    cacheDir = path.join(outDir, ".cache");
+    fs.mkdirSync(cacheDir, { recursive: true });
+
+    const key = hash(url);
+    htmlPath = path.join(cacheDir, `${key}.html`);
+    mdPath = path.join(cacheDir, `${key}.md`);
   }
 
-  fs.mkdirSync(outDir, { recursive: true });
-  const cacheDir = path.join(outDir, ".cache");
-  fs.mkdirSync(cacheDir, { recursive: true });
+  let html, pageTitle, finalUrl;
+  let usedCache = false;
 
-  const key = hash(url);
-  const htmlPath = path.join(cacheDir, `${key}.html`);
-  const mdPath = path.join(cacheDir, `${key}.md`);
-
-  let html, title;
-
-  if (!noCache && fs.existsSync(htmlPath)) {
+  if (outDir && !noCache && fs.existsSync(htmlPath)) {
     html = fs.readFileSync(htmlPath, "utf8");
-    title = "Cached Page";
+    pageTitle = "Cached Page";
+    finalUrl = url;
+    usedCache = true;
   } else {
-    console.log("1) Fetching page…");
     const res = await extractHTML(url);
     html = res.html;
-    title = res.title;
-    fs.writeFileSync(htmlPath, html);
+    pageTitle = res.title;
+    finalUrl = res.finalUrl;
+
+    if (outDir) fs.writeFileSync(htmlPath, html);
   }
 
-  console.log("2) Extracting readable content…");
-  const article = readabilityExtract(html, url);
+  const article = readabilityExtract(html, finalUrl || url);
   if (!article) throw new Error("Readability extraction failed");
 
-  const markdown = htmlToMarkdown(article.content);
-  fs.writeFileSync(mdPath, markdown);
+  const extractedMarkdown = htmlToMarkdown(article.content);
 
-  console.log("3) Chunk summarization…");
-  const chunks = chunkText(markdown);
+  if (outDir) fs.writeFileSync(mdPath, extractedMarkdown);
+
+  const chunks = chunkText(extractedMarkdown, chunkSize);
   const partials = [];
   for (let i = 0; i < chunks.length; i++) {
-    partials.push(await summarizeChunk(chunks[i], i + 1));
+    partials.push(await summarizeChunk(chunks[i], i + 1, { model }));
   }
 
-  console.log("4) Final merge…");
-  const finalSummary = await mergeSummaries(
-    url,
-    article.title,
+  const markdown = await mergeSummaries(
+    finalUrl || url,
+    article.title || pageTitle,
     partials,
-    depth
+    depth,
+    { model }
   );
 
-  const outFile = path.join(outDir, `${safeFileName(article.title)}_add.md`);
-  fs.writeFileSync(outFile, finalSummary, "utf8");
+  // Optional file write (CLI mode)
+  let outFile;
+  if (outDir) {
+    outFile = path.join(outDir, `${safeFileName(article.title)}_add.md`);
+    fs.writeFileSync(outFile, markdown, "utf8");
+  }
 
-  console.log("\nDone:");
-  console.log(outFile);
+  return {
+    mode: "add",
+    depth,
+    url,
+    finalUrl: finalUrl || url,
+    title: article.title || pageTitle,
+    markdown,
+    extractedMarkdown,
+    meta: {
+      chunks: chunks.length,
+      usedCache,
+      outFile: outFile || null,
+    },
+  };
 }
 
-main().catch((e) => {
-  console.error("Error:", e.message);
-  process.exit(1);
-});
+/* -------------------------------------------------- */
+/* CLI entry                                          */
+/* -------------------------------------------------- */
+
+const isDirectRun =
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+if (isDirectRun) {
+  (async () => {
+    const { url, outDir, depth, noCache } = parseArgs(process.argv);
+    if (!url) {
+      console.error(
+        'Usage: node summarize_add.js "<url>" [--depth short|medium|long] [--out ./outputs] [--no-cache]'
+      );
+      process.exit(1);
+    }
+
+    try {
+      const r = await summarizeAdd({ url, depth, outDir, noCache });
+      console.log("\nDone:");
+      console.log(r.meta.outFile || "(no file written)");
+    } catch (e) {
+      console.error("Error:", e.message);
+      process.exit(1);
+    }
+  })();
+}

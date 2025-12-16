@@ -1,97 +1,260 @@
-# Web Page Summarization Agent (WIP)
+# Web Page Summarization Agent
 
 This project is an experimental **AI-powered web page summarization agent**.
-It fetches a web page, extracts the readable content, and generates a structured summary using an LLM.
 
-The project is currently **CLI-based** and serves as the foundation for a future:
+It fetches a web page (or accepts raw text), extracts the readable content, and generates a structured summary using an LLM.  
+The system is designed around **explicit summarization modes** to control hallucination vs enrichment.
 
-- backend API
-- web app (paste URL → summary)
-- browser extension (summarize the page you are reading)
+The project consists of:
+
+- reusable summarization tools
+- a backend API
+- a minimal web UI
+- a foundation for a future browser extension
 
 ---
 
 ## Current Status
 
-✅ CLI tool that summarizes a **single web page**  
-✅ Uses **Playwright + Readability** for robust content extraction  
-✅ Supports **long documents via chunking (map → reduce)**  
-✅ Supports **multiple summary styles**  
-✅ Explicit handling of **LLM hallucination** via a strict, grounded mode
+### ✅ Implemented
 
-🚧 Backend API not yet finalized  
-🚧 Web UI not yet built  
-🚧 Browser extension not yet built
+- CLI tools for summarizing a single web page
+- Backend API with two endpoints:
+  - `POST /v1/summarize/url`
+  - `POST /v1/summarize/text`
+- Web UI (MVP):
+  - paste URL → summary
+  - strict / add mode toggle
+  - depth control
+  - markdown preview + copy
+- Robust content extraction:
+  - Playwright + Readability
+- Long-document support via chunking (map → reduce)
+- Explicit handling of hallucination via a strict, grounded mode
+
+### 🚧 Planned
+
+- Browser extension (side panel)
+- In-browser text extraction (Readability)
+- Auth / API keys (optional, later)
+- PDF export
 
 ---
 
-## Implemented Scripts
+## Project Structure
 
-### 1. `summarize_add.js` — Exploratory / Enriched Summary
+```
+web-summary-agent/
+│
+├── src/
+│   ├── tools/                 # Pure summarization logic
+│   │   ├── summarize_add.js
+│   │   ├── summarize_strict.js
+│   │   └── summarize_text.js
+│   │
+│   ├── backend/               # Backend API
+│   │   └── index.js
+│   │
+│   └── frontend/              # Web UI (static)
+│       ├── index.html
+│       ├── app.js
+│       └── styles.css
+│
+├── outputs/                   # CLI outputs only
+├── .env
+├── package.json
+└── README.md
+```
 
-This script generates **rich, study-note style summaries**.
+---
+
+## Summarization Modes
+
+Two modes exist intentionally:
+
+| Mode     | Behavior                                                               |
+| -------- | ---------------------------------------------------------------------- |
+| `strict` | Faithful, source-only summary. No external knowledge, no inference.    |
+| `add`    | Enriched, learning-oriented summary. May add context and explanations. |
+
+This explicit separation avoids prompt ambiguity and makes summarization behavior predictable.
+
+---
+
+## Implemented Tools
+
+### 1. `summarize_strict.js` — Grounded / Faithful Summary (URL input)
 
 **Characteristics**
 
-- Chunk-based summarization
-- Encourages structured output:
+- Only includes information explicitly present on the page
+- No inferred explanations
+- No background ML knowledge
+- Missing concepts are explicitly marked as:  
+  **“Not covered on this page.”**
+
+**Use cases**
+
+- Documentation
+- Research & academic summaries
+- Regulatory or compliance-oriented analysis
+
+**CLI usage**
+
+```bash
+node src/tools/summarize_strict.js "<url>" --depth long
+```
+
+---
+
+### 2. `summarize_add.js` — Enriched / Exploratory Summary (URL input)
+
+**Characteristics**
+
+- Study-note style summaries
+- Structured output:
   - overview
   - key ideas
   - core concepts
   - math intuition
-  - training workflow
+  - workflows
   - pitfalls & checklist
-- Optimized for learning and exploration
-- May include **general background knowledge** beyond the page itself
+- May include general background knowledge
 
-**Use case**
+**Use cases**
 
-- Studying technical topics
-- Creating learning notes
-- When completeness is preferred over strict faithfulness
+- Learning technical topics
+- Creating study notes
+- Exploratory reading
 
-**Run**
+**CLI usage**
 
 ```bash
-node summarize_add.js "<url>" --depth long
+node src/tools/summarize_add.js "<url>" --depth long
 ```
 
 ---
 
-### 2. `summarize_strict.js` — Grounded / Faithful Summary
-
-This script generates **strict, source-grounded summaries**.
+### 3. `summarize_text.js` — Text-Based Summary (No browsing)
 
 **Characteristics**
 
-- Chunk-based summarization
-- Enforces hard constraints:
-  - only include information explicitly present in the source page
-  - no inferred explanations
-  - no external or background ML knowledge
-  - missing concepts are explicitly marked as:
-    **"Not covered on this page."**
-- Removes sections that invite hallucination:
-  - no best practices
-  - no workflows
-  - no pitfalls unless explicitly mentioned
+- Accepts raw text instead of a URL
+- No Playwright, no fetching
+- Supports both `strict` and `add` modes
+- Designed for browser extension and copy/paste use cases
 
-**Use case**
+**Use cases**
 
-- Documentation
-- Research and academic summaries
-- Regulatory or compliance-oriented analysis
-- Verifying what a page _actually states_
+- Browser extension
+- Logged-in pages
+- Paywalled content
+- Internal dashboards
+- Future PDF / document support
 
-**Run**
+---
+
+## Backend API
+
+### Start backend
 
 ```bash
-node summarize_strict.js "<url>" --depth long
+node src/backend/index.js
+```
+
+Default port: `http://localhost:4000`
+
+---
+
+### `POST /v1/summarize/url`
+
+Summarize a web page by URL.
+
+**Request**
+
+```json
+{
+  "url": "https://example.com",
+  "mode": "strict",
+  "depth": "medium"
+}
+```
+
+**Response**
+
+```json
+{
+  "ok": true,
+  "mode": "strict",
+  "depth": "medium",
+  "title": "...",
+  "finalUrl": "...",
+  "markdown": "...",
+  "meta": { "chunks": 3 }
+}
 ```
 
 ---
 
-## Core Architecture (CLI)
+### `POST /v1/summarize/text`
+
+Summarize provided text (no browsing).
+
+**Request**
+
+```json
+{
+  "title": "Optional title",
+  "url": "Optional source URL",
+  "mode": "add",
+  "depth": "short",
+  "content": "Raw text to summarize..."
+}
+```
+
+**Response**
+
+```json
+{
+  "ok": true,
+  "mode": "add",
+  "depth": "short",
+  "markdown": "...",
+  "meta": { "chunks": 2 }
+}
+```
+
+---
+
+## Web UI (MVP)
+
+The web UI is a lightweight static frontend.
+
+### Start frontend
+
+```bash
+npx http-server ./src/frontend -p 5173
+```
+
+Open:
+
+```
+http://localhost:5173/index.html
+```
+
+**Features**
+
+- Paste URL
+- Toggle `strict` / `add`
+- Choose summary depth
+- Markdown preview
+- Copy markdown to clipboard
+
+---
+
+## Core Architecture
+
+### URL-based summarization
 
 ```
 URL
@@ -111,55 +274,42 @@ LLM merge (reduce)
 Markdown output
 ```
 
----
+### Text-based summarization
 
-## Key Design Decisions
-
-### Grounded vs Enriched Summaries
-
-Two modes exist intentionally:
-
-| Mode     | Goal                                 |
-| -------- | ------------------------------------ |
-| `add`    | Helpful, learning-oriented summaries |
-| `strict` | Faithful, source-only summaries      |
-
-This explicit separation avoids prompt ambiguity and makes summarization behavior predictable.
-
----
-
-## What This Project Is **Not** (Yet)
-
-- ❌ Not a backend API
-- ❌ Not a multi-page course crawler
-- ❌ Not a browser extension
-- ❌ Not summarizing video or audio content
+```
+Raw text
+ ↓
+Chunking
+ ↓
+LLM summarization (map)
+ ↓
+LLM merge (reduce)
+ ↓
+Markdown output
+```
 
 ---
 
-## Planned Next Steps
+## What This Project Is Not (Yet)
 
-### Phase 1 — Backend API
+- ❌ Not a multi-page crawler
+- ❌ Not a course-wide summarizer
+- ❌ Not summarizing video or audio
+- ❌ Not production-hardened (auth, billing, quotas)
 
-- `POST /v1/summarize/url`
-- `POST /v1/summarize/text`
-- Rate limiting and SSRF protection
-- Grounded mode as default behavior
+---
 
-### Phase 2 — Web App
+## Next Steps
 
-- Paste URL → summary
-- Export as Markdown / PDF
-
-### Phase 3 — Browser Extension
+### Phase 4 — Browser Extension
 
 - Side panel UI
 - Summarize current page
-- Uses backend `/summarize/text`
+- Uses `/v1/summarize/text`
 
 ---
 
-## Tech Stack (Current)
+## Tech Stack
 
 - Node.js (ESM)
 - Playwright
@@ -167,5 +317,3 @@ This explicit separation avoids prompt ambiguity and makes summarization behavio
 - JSDOM
 - Turndown (HTML → Markdown)
 - OpenAI API
-
----
