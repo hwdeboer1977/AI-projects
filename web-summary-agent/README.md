@@ -2,15 +2,13 @@
 
 This project is an experimental **AI-powered web page summarization agent**.
 
-It fetches a web page (or accepts raw text), extracts the readable content, and generates a structured summary using an LLM.  
+It can:
+
+- summarize a web page by URL (server-side fetching), or
+- summarize the _currently open page_ directly from the browser (extension)
+
+Readable content is extracted and converted into structured **Markdown summaries** using an LLM.  
 The system is designed around **explicit summarization modes** to control hallucination vs enrichment.
-
-The project consists of:
-
-- reusable summarization tools
-- a backend API
-- a minimal web UI
-- a foundation for a future browser extension
 
 ---
 
@@ -27,17 +25,16 @@ The project consists of:
   - strict / add mode toggle
   - depth control
   - markdown preview + copy
+- Browser Extension (MVP):
+  - Chrome MV3 side panel
+  - Summarize **current page**
+  - Uses `/v1/summarize/text`
+  - Markdown preview + copy
 - Robust content extraction:
-  - Playwright + Readability
+  - Playwright + Readability (backend)
+  - DOM-based extraction (extension, MVP)
 - Long-document support via chunking (map → reduce)
 - Explicit handling of hallucination via a strict, grounded mode
-
-### 🚧 Planned
-
-- Browser extension (side panel)
-- In-browser text extraction (Readability)
-- Auth / API keys (optional, later)
-- PDF export
 
 ---
 
@@ -55,10 +52,21 @@ web-summary-agent/
 │   ├── backend/               # Backend API
 │   │   └── index.js
 │   │
-│   └── frontend/              # Web UI (static)
-│       ├── index.html
-│       ├── app.js
-│       └── styles.css
+│   ├── frontend/              # Web UI (static)
+│   │   ├── index.html
+│   │   ├── app.js
+│   │   └── styles.css
+│   │
+│   └── extension/             # Chrome Extension (MV3)
+│       ├── manifest.json
+│       ├── service_worker.js
+│       ├── sidepanel.html
+│       ├── sidepanel.js
+│       ├── sidepanel.css
+│       └── marked.min.js
+│
+├── src/scripts/
+│   └── copy-marked.js          # Copies marked into extension automatically
 │
 ├── outputs/                   # CLI outputs only
 ├── .env
@@ -90,14 +98,7 @@ This explicit separation avoids prompt ambiguity and makes summarization behavio
 - Only includes information explicitly present on the page
 - No inferred explanations
 - No background ML knowledge
-- Missing concepts are explicitly marked as:  
-  **“Not covered on this page.”**
-
-**Use cases**
-
-- Documentation
-- Research & academic summaries
-- Regulatory or compliance-oriented analysis
+- Missing concepts are explicitly marked as: **“Not covered on this page.”**
 
 **CLI usage**
 
@@ -112,20 +113,8 @@ node src/tools/summarize_strict.js "<url>" --depth long
 **Characteristics**
 
 - Study-note style summaries
-- Structured output:
-  - overview
-  - key ideas
-  - core concepts
-  - math intuition
-  - workflows
-  - pitfalls & checklist
+- Structured output (overview, key ideas, concepts, workflows)
 - May include general background knowledge
-
-**Use cases**
-
-- Learning technical topics
-- Creating study notes
-- Exploratory reading
 
 **CLI usage**
 
@@ -142,15 +131,7 @@ node src/tools/summarize_add.js "<url>" --depth long
 - Accepts raw text instead of a URL
 - No Playwright, no fetching
 - Supports both `strict` and `add` modes
-- Designed for browser extension and copy/paste use cases
-
-**Use cases**
-
-- Browser extension
-- Logged-in pages
-- Paywalled content
-- Internal dashboards
-- Future PDF / document support
+- Used by the browser extension and copy/paste workflows
 
 ---
 
@@ -159,7 +140,7 @@ node src/tools/summarize_add.js "<url>" --depth long
 ### Start backend
 
 ```bash
-node src/backend/index.js
+npm run server
 ```
 
 Default port: `http://localhost:4000`
@@ -167,10 +148,6 @@ Default port: `http://localhost:4000`
 ---
 
 ### `POST /v1/summarize/url`
-
-Summarize a web page by URL.
-
-**Request**
 
 ```json
 {
@@ -180,27 +157,9 @@ Summarize a web page by URL.
 }
 ```
 
-**Response**
-
-```json
-{
-  "ok": true,
-  "mode": "strict",
-  "depth": "medium",
-  "title": "...",
-  "finalUrl": "...",
-  "markdown": "...",
-  "meta": { "chunks": 3 }
-}
-```
-
 ---
 
 ### `POST /v1/summarize/text`
-
-Summarize provided text (no browsing).
-
-**Request**
 
 ```json
 {
@@ -212,23 +171,9 @@ Summarize provided text (no browsing).
 }
 ```
 
-**Response**
-
-```json
-{
-  "ok": true,
-  "mode": "add",
-  "depth": "short",
-  "markdown": "...",
-  "meta": { "chunks": 2 }
-}
-```
-
 ---
 
 ## Web UI (MVP)
-
-The web UI is a lightweight static frontend.
 
 ### Start frontend
 
@@ -242,13 +187,51 @@ Open:
 http://localhost:5173/index.html
 ```
 
-**Features**
+---
 
-- Paste URL
-- Toggle `strict` / `add`
-- Choose summary depth
-- Markdown preview
-- Copy markdown to clipboard
+## Browser Extension (MVP)
+
+### Features
+
+- Chrome Manifest V3 side panel
+- Summarize the **currently open page**
+- Markdown preview and copy
+- Uses backend `/v1/summarize/text`
+
+### Permissions
+
+The extension uses:
+
+```json
+"permissions": ["sidePanel", "activeTab", "scripting"],
+"host_permissions": ["<all_urls>"]
+```
+
+This is required to extract page content across different sites.
+
+### Load extension
+
+1. Open `chrome://extensions`
+2. Enable **Developer mode**
+3. Click **Load unpacked**
+4. Select `src/extension/`
+5. Make sure backend is running
+
+---
+
+## Markdown Support in Extension
+
+- Markdown is rendered using **marked**
+- `marked` is bundled locally into the extension
+- Automatically copied via:
+
+```bash
+npm install
+```
+
+(using `src/scripts/copy-marked.js`)
+
+This avoids CSP issues with remote CDNs.
 
 ---
 
@@ -257,63 +240,32 @@ http://localhost:5173/index.html
 ### URL-based summarization
 
 ```
-URL
- ↓
-Playwright (fetch & render)
- ↓
-Readability (extract main content)
- ↓
-HTML → Markdown
- ↓
-Chunking
- ↓
-LLM summarization (map)
- ↓
-LLM merge (reduce)
- ↓
-Markdown output
+URL → Playwright → Readability → Markdown → Chunking → LLM → Markdown
 ```
 
 ### Text-based summarization
 
 ```
-Raw text
- ↓
-Chunking
- ↓
-LLM summarization (map)
- ↓
-LLM merge (reduce)
- ↓
-Markdown output
+DOM/Text → Chunking → LLM → Markdown
 ```
 
 ---
 
-## What This Project Is Not (Yet)
+## What This Project Is Not
 
-- ❌ Not a multi-page crawler
-- ❌ Not a course-wide summarizer
-- ❌ Not summarizing video or audio
+- ❌ Not a crawler
+- ❌ Not a search engine
 - ❌ Not production-hardened (auth, billing, quotas)
-
----
-
-## Next Steps
-
-### Phase 4 — Browser Extension
-
-- Side panel UI
-- Summarize current page
-- Uses `/v1/summarize/text`
 
 ---
 
 ## Tech Stack
 
 - Node.js (ESM)
+- Express
 - Playwright
 - Mozilla Readability
 - JSDOM
-- Turndown (HTML → Markdown)
+- Turndown
+- Marked (bundled locally)
 - OpenAI API

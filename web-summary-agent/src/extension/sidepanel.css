@@ -1,0 +1,94 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  background: #0b0f19;
+  color: #e8eefc;
+}
+.wrap {
+  padding: 12px;
+}
+h2 {
+  margin: 0 0 10px;
+}
+h3 {
+  margin: 14px 0 8px;
+  font-size: 14px;
+  color: #cfe0ff;
+}
+
+label {
+  display: block;
+  margin: 10px 0 6px;
+  color: #cfe0ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+input,
+select,
+textarea,
+button {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #2a395f;
+  background: #0c1426;
+  color: #e8eefc;
+  outline: none;
+}
+textarea {
+  height: 220px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+}
+.col {
+  flex: 1;
+}
+
+.status {
+  margin: 10px 0;
+  color: #aab6d6;
+  min-height: 18px;
+}
+.meta {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #cfe0ff;
+}
+.meta a {
+  color: #86a2ff;
+  word-break: break-all;
+}
+
+.preview {
+  border: 1px solid #2a395f;
+  background: #0c1426;
+  border-radius: 10px;
+  padding: 10px;
+  height: 240px;
+  overflow: auto;
+}
+.preview pre {
+  padding: 10px;
+  border-radius: 10px;
+  overflow: auto;
+  background: rgba(255, 255, 255, 0.06);
+}
+.preview code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 4px;
+  border-radius: 6px;
+}
