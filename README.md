@@ -14,6 +14,7 @@ AI-Projects/
 ├── Agentic-Newsletter/
 ├── Web-Summarization-Agent/
 ├── AI-Knowledge-Agent/
+├── AI-Chatbot/
 ```
 
 ---
@@ -58,6 +59,21 @@ A Retrieval-Augmented Generation (RAG) system for internal knowledge and policy 
 - Dockerized database (safe local persistence)
 
 Designed as a foundation for **internal Q&A assistants**, compliance tools, and company knowledge bases.
+
+---
+
+### **AI-Chatbot**
+
+A customer support chatbot POC for Bolder Outdoor, a fictional e-commerce outdoor gear store.
+
+**Core features:**
+
+- Conversational AI customer support
+- Polished outdoor-themed UI
+- Full knowledge of products, shipping, returns, and policies
+- Quick action buttons for common questions
+- Responsive design
+- Accessibility support
 
 ---
 
