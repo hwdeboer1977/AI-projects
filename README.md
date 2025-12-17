@@ -1,14 +1,6 @@
 # AI Projects Monorepo
 
-This repository contains multiple AI-related applications combined into a single monorepo.  
-Each project keeps its own folder, dependencies, and structure. Some projects run natively on Windows, others inside WSL (Ubuntu).
-
-This monorepo supports:
-
-- A unified workspace
-- Shared tooling
-- Centralized version control
-- Easy expansion with new AI automation projects
+This repository contains multiple AI-related applications combined into a single monorepo. Each project is self-contained but shares tooling and conventions where possible.
 
 ---
 
@@ -18,165 +10,66 @@ This monorepo supports:
 AI-Projects/
 │
 ├── AI-Accounting-Agent/
-│   A Telegram-based automated accounting agent.
-│   Handles OCR, AI-powered invoice parsing, VAT logic, fallbacks,
-│   and automatic storage in Google Sheets.
-│
 ├── AI-Agents/
-│   A collection of smaller personal AI agents:
-│   - Fitness logging bot
-│   - Nutrition assistant
-│   - Automation tools
-│   Originally developed on Windows.
-│
 ├── Agentic-Newsletter/
-│   An autonomous news discovery, clustering, and summarization pipeline.
-│   Includes narrative tracking, overlap detection, and thematic analysis.
-│   Originally developed in WSL (Ubuntu).
-│
-└── Web-Summarization-Agent/
-    An AI-powered web page summarization engine.
-    Fetches a web page, extracts readable content, and generates
-    structured summaries using LLMs.
+├── Web-Summarization-Agent/
+├── AI-Knowledge-Agent/
 ```
 
 ---
 
-## 📌 Project Summaries
+## 🔹 Project Overview (Short)
 
-### **1. AI-Accounting-Agent (Telegram + OCR + LLM)**
+### **AI-Accounting-Agent**
 
-A production-ready accounting agent that:
-
-- Accepts invoice photos via Telegram
-- Runs OCR with Tesseract
-- Extracts invoice fields via OpenAI
-- Computes Dutch VAT
-- Categorizes expenses
-- Handles fallback manual input
-- Saves structured data automatically into Google Sheets
-- Stores parsed JSON locally for debugging (`src/output/`)
-
-Technologies:  
-**OpenAI API, Tesseract.js, node-telegram-bot-api, google-spreadsheet**
+Telegram-based accounting automation using OCR + LLMs for invoice parsing, VAT logic, and Google Sheets export.
 
 ---
 
-### **2. AI-Agents (Fitness, Nutrition, Automation)**
+### **AI-Agents**
 
-A folder containing smaller personal AI agents, such as:
-
-- Fitness tracking bot
-- Nutrition agent
-- Experimental automation tools
-
-Runs natively on Windows — no WSL required.
+Collection of smaller personal AI agents (fitness tracking, nutrition, automation experiments).
 
 ---
 
-### **3. Agentic-Newsletter (Autonomous Multi-Agent Pipeline)**
+### **Agentic-Newsletter**
 
-A Linux-native (WSL Ubuntu) autonomous agent system that:
-
-- Fetches news from RSS feeds and APIs
-- Performs article clustering and similarity detection
-- Summarizes grouped news items
-- Generates executive summaries
-- Tracks narratives and theme evolution over time
-
-Ideal for:
-
-- Newsletters
-- Automated daily briefs
-- Narrative and sentiment analysis pipelines
+Autonomous multi-agent news pipeline for clustering, summarization, and narrative tracking. Linux / WSL focused.
 
 ---
 
-### **4. Web-Summarization-Agent (Web Page → Structured Summary)**
+### **Web-Summarization-Agent**
 
-An experimental **AI-powered web page summarization agent** that:
-
-- Fetches and renders a single web page
-- Extracts readable main content using Mozilla Readability
-- Converts HTML to Markdown
-- Supports long documents via chunking (map → reduce)
-- Generates structured summaries using an LLM
-
-The project explicitly supports **two summarization modes**:
-
-- **Enriched mode** (`summarize_add.js`)  
-  Generates learning-oriented, study-note style summaries  
-  (may include background knowledge)
-
-- **Strict / Grounded mode** (`summarize_strict.js`)  
-  Produces source-faithful summaries only  
-  Missing concepts are explicitly marked as:  
-  **“Not covered on this page.”**
-
-This project serves as the foundation for:
-
-- a backend summarization API
-- a web app (paste URL → summary)
-- a browser side-panel extension (summarize current page)
+Web page → structured summary engine supporting strict (source-grounded) and enriched summarization modes.
 
 ---
 
-## 🛠 Development Guide
+### **AI-Knowledge-Agent (RAG Internal Q&A)**
 
-### 🔹 Working on Windows-native projects
+A Retrieval-Augmented Generation (RAG) system for internal knowledge and policy documents.
 
-These include:
+**Core features:**
 
-- `AI-Accounting-Agent`
-- `AI-Agents`
-- `Web-Summarization-Agent` (CLI tools)
+- Web ingestion (policies, contracts, legal docs)
+- Text chunking + OpenAI embeddings
+- Vector search using Postgres + pgvector
+- `/ask` API endpoint (grounded answers with citations)
+- Minimal Next.js frontend
+- Dockerized database (safe local persistence)
 
-Open normally in Windows VS Code:
-
-```
-Open folder in VS Code → Windows environment
-```
-
-All Node.js tooling and scripts run out of the box.
+Designed as a foundation for **internal Q&A assistants**, compliance tools, and company knowledge bases.
 
 ---
 
-### 🔹 Working on WSL-native projects
+## 🛠 Development Notes
 
-Applies to:
-
-- `Agentic-Newsletter`
-
-Open via VS Code WSL extension:
-
-```
-Open folder in VS Code → Remote WSL (Ubuntu)
-```
-
-Or from WSL terminal:
-
-```bash
-cd /mnt/c/Users/hwdeb/Documents/blockstat_solutions_github/AI-Projects
-code .
-```
-
----
-
-## 🚀 Future Projects
-
-Planned additions to this monorepo include:
-
-- Backend summarization API for web and browser clients
-- Browser side-panel summarization extension
-- Agentic portfolio optimizer
-- Market intelligence and monitoring bots
-- Business automation tools
-- Additional Telegram-based agents
+- Some projects run natively on Windows
+- Others (Docker / WSL-based) require Linux tooling
+- Each project has its own README with setup details
 
 ---
 
 ## 👤 Author
 
 **H.W. de Boer**  
-AI & Blockchain Engineer  
-http
+AI & Blockchain Engineer
