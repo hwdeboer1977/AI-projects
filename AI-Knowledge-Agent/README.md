@@ -1,25 +1,29 @@
 # AI‑Knowledge‑Agent
 
-A minimal, production‑ready **Internal Knowledge / Q&A Agent** built with **Node.js, PostgreSQL + pgvector, and OpenAI embeddings**.
+A **minimal full‑stack RAG (Retrieval‑Augmented Generation) knowledge agent**.
 
-The goal of this project is to ingest structured legal / policy documents (web pages, later PDFs & markdown), store them as semantic vectors, and enable accurate **RAG‑based Q&A** over internal knowledge.
+It ingests legal / policy documents (web today, PDFs & markdown later), stores them as embeddings in **PostgreSQL + pgvector**, and exposes a clean **/ask API** with a simple **Next.js frontend**.
+
+This project is intentionally explicit and debuggable — no heavy frameworks, no magic abstractions.
 
 ---
 
 ## ✨ What this project does
 
-- Fetches **policy / legal webpages** (e.g. Stripe, GitHub, OpenAI, Cloudflare)
-- Extracts clean text from HTML
-- **Chunks** documents into overlapping segments
-- Generates **embeddings** using OpenAI
-- Stores chunks in **Postgres + pgvector**
-- Prepares the foundation for a `/ask` endpoint (RAG)
-
-This is intentionally simple, explicit, and inspectable — no magic frameworks.
+- Ingests **web‑based legal / policy documents** (Stripe, GitHub, OpenAI, Cloudflare)
+- Cleans and extracts readable text from HTML
+- **Chunks** text into overlapping segments
+- Generates **OpenAI embeddings**
+- Stores everything in **Postgres + pgvector**
+- Performs **semantic retrieval**
+- Answers questions using **RAG** with citations
+- Provides:
+  - REST API (`/ask`)
+  - Simple **Next.js frontend**
 
 ---
 
-## 🧱 Architecture (High‑level)
+## 🧱 High‑level architecture
 
 ```
 Web / Docs / PDFs
@@ -32,35 +36,46 @@ Embeddings (OpenAI)
         ↓
 Postgres (pgvector)
         ↓
-Semantic Retrieval (RAG)
+Retriever (top‑K vectors)
         ↓
 LLM Answer + Sources
+        ↓
+API (/ask) + Next.js UI
 ```
 
 ---
 
-## 📁 Project Structure
+## 📁 Project structure
 
 ```
 AI-Knowledge-Agent/
 │
-├─ docker-compose.yml        # Postgres + pgvector
-├─ .env                     # Database + OpenAI config
-├─ package.json
+├─ docker-compose.yml        # Postgres + pgvector (Docker)
+├─ .env                     # Backend secrets (NOT committed)
+├─ .gitignore
+├─ package.json             # Backend scripts
+│
 ├─ sql/
 │   └─ schema.sql            # documents / chunks tables
 │
 ├─ src/
-│   ├─ db.js                 # pg Pool + helpers
+│   ├─ backend/
+│   │   └─ server.js         # Express API (/health, /ask)
 │   │
 │   ├─ rag/
-│   │   ├─ chunker.js        # text → chunks (+ overlap)
-│   │   └─ embedding.js      # OpenAI embeddings
+│   │   ├─ chunker.js        # Text → chunks (+ overlap)
+│   │   ├─ embeddings.js    # OpenAI embeddings
+│   │   ├─ retriever.js     # Vector similarity search
+│   │   └─ answer.js        # RAG answer generation
 │   │
-│   └─ scripts/
-│       ├─ ingest_web.js     # Web ingestion pipeline
-│       └─ test_db_via_minimal.js  # Test DB
-│
+│   ├─ scripts/
+│   │   ├─ ingest_web.js    # Web ingestion pipeline
+│   │   └─ test_db_minimal.js
+│   │
+│   ├─ db.js                # Postgres helper
+│   │
+│   └─ frontend/
+│       └─ my-app/           # Next.js frontend
 │
 └─ README.md
 ```
@@ -75,13 +90,13 @@ AI-Knowledge-Agent/
 
 ---
 
-## 🐳 Postgres + pgvector (Docker)
+## 🐳 Database (Postgres + pgvector)
 
-We run Postgres in Docker to:
+We intentionally run Postgres in **Docker**:
 
-- avoid local version conflicts
-- guarantee pgvector availability
-- keep dev environment reproducible
+- No local Postgres conflicts
+- pgvector guaranteed
+- Fully reproducible setup
 
 ### Start database
 
@@ -89,15 +104,15 @@ We run Postgres in Docker to:
 docker compose up -d
 ```
 
-Database is exposed on **port 5433** to avoid conflicts with local Postgres.
+Database is exposed on **port 5433** (not 5432).
 
 ---
 
-## 🗄️ Database Schema
+## 🗄️ Database schema
 
-`sql/schema.sql` creates two core tables:
+`sql/schema.sql` defines:
 
-- **documents** — one row per source (URL, file)
+- **documents** — one row per source (URL / file)
 - **chunks** — chunked text + embedding vectors
 
 ```sql
@@ -113,28 +128,30 @@ Get-Content sql/schema.sql | docker exec -i rag_pg psql -U postgres -d ragdb
 
 ---
 
-## 🔐 Environment Variables
+## 🔐 Environment variables
 
-`.env`
+Create `.env` **(never commit this)**:
 
 ```env
 DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/ragdb
 OPENAI_API_KEY=sk-...
 EMBEDDING_MODEL=text-embedding-3-small
 EMBEDDING_DIM=1536
+CHAT_MODEL=gpt-4.1-mini
+PORT=4000
 ```
+
+`.env` is ignored via `.gitignore`.
 
 ---
 
-## ✅ Verify DB Connection
-
-Minimal sanity check:
+## ✅ Verify DB connection
 
 ```bash
 node src/scripts/test_db_minimal.js
 ```
 
-Expected output:
+Expected:
 
 ```
 Running minimal DB test...
@@ -143,21 +160,27 @@ DB OK: { now: ... }
 
 ---
 
-## 🌐 Web Ingestion
+## 🌐 Web ingestion
 
-Edit `src/scripts/ingest_web.js`:
+Edit URLs in:
+
+```js
+src / scripts / ingest_web.js;
+```
+
+Example:
 
 ```js
 export const URLS = ["https://stripe.com/privacy"];
 ```
 
-Run:
+Run ingestion:
 
 ```bash
 node src/scripts/ingest_web.js
 ```
 
-Check results:
+Verify:
 
 ```bash
 docker exec -it rag_pg psql -U postgres -d ragdb -c "SELECT COUNT(*) FROM documents;"
@@ -168,70 +191,110 @@ docker exec -it rag_pg psql -U postgres -d ragdb -c "SELECT COUNT(*) FROM chunks
 
 ## 🧩 Why chunking is required
 
-Chunking is essential for RAG systems:
+Chunking is **mandatory** for RAG:
 
+- Vector search works on small semantic units
 - LLMs have context limits
-- Vector search works on **small semantic units**
-- Overlap prevents cutting sentences / definitions
+- Overlap prevents broken sentences
 
 Current strategy:
 
 - ~1600 characters per chunk
 - ~200 character overlap
 
-Later improvements:
-
-- Chunk by **headings / sections**
-- Add `section_title` metadata (contracts, policies)
+This applies to **web pages, PDFs, and markdown** alike.
 
 ---
 
-## 📄 Supported Sources
+## 🚀 Backend API
 
-Currently:
+### Start backend
 
-- Web pages (HTML)
+```bash
+npm run dev
+```
 
-Planned:
+Server runs on:
 
-- Markdown files (`docs/` folder)
-- PDFs (policy / contracts)
-- Internal docs
+```
+http://localhost:4000
+```
 
-All sources share the same pipeline after text extraction.
+### Health check
+
+```bash
+GET /health
+```
+
+### Ask endpoint
+
+```bash
+POST /ask
+Content-Type: application/json
+
+{
+  "question": "What is Stripe's privacy policy about data retention?"
+}
+```
+
+Response:
+
+```json
+{
+  "answer": "...",
+  "sources": [
+    { "ref": "#1", "source": "https://stripe.com/privacy", "distance": 0.12 }
+  ]
+}
+```
+
+Answers are **context‑restricted** and include citations.
 
 ---
 
-## 🚀 Next Steps
+## 🖥️ Frontend (Next.js)
 
-Recommended order:
+Frontend lives in:
 
-1. **Build `/ask` endpoint** (RAG Q&A)
-2. Ingest all policy URLs
-3. Add local docs / PDFs
-4. Improve chunking (section‑aware)
-5. Add citations + source highlighting
+```
+src/frontend/my-app
+```
+
+### Start frontend
+
+```bash
+cd src/frontend/my-app
+npm run dev
+```
+
+Open:
+
+```
+http://localhost:3000
+```
+
+The frontend calls the backend `/ask` endpoint.
 
 ---
 
-## 🎯 Use cases
+## 🧠 Design philosophy
 
-- Internal compliance assistant
-- Legal / policy Q&A
-- Security & privacy reviews
-- Developer documentation bots
-- Regulator / audit tooling prototypes
-
----
-
-## 🧠 Design Philosophy
-
-- Explicit over magical
-- SQL over abstractions
-- Inspectable data
+- Explicit > abstract
+- SQL > black‑box vector DBs
+- Inspectable embeddings
 - Minimal dependencies
 
-This is a **foundation**, not a black‑box product.
+This is a **foundation**, not a SaaS product.
+
+---
+
+## 🔜 Next steps
+
+- Ingest all policy URLs
+- Add markdown & PDF ingestion
+- Improve section‑aware chunking
+- Add conversation memory
+- Add auth / roles
 
 ---
 
