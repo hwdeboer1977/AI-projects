@@ -1,0 +1,4 @@
+# Override parent gitignore - track these files
+*.docx*
+*.xlsx*
+*.pdf*

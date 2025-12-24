@@ -1,0 +1,5 @@
+Factuuromschrijving voor Interactive Monkey
+
+- Event tracking implementatie op Wix-pagina (6 uur)
+- Testen en validatie van events
+- Projectpagina: Dolf Craanenburgh

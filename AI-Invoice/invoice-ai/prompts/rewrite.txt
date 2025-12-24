@@ -1,0 +1,13 @@
+Je herschrijft een ruwe omschrijving naar een nette factuur-waardige tekst in het Nederlands.
+- Zakelijk, helder, niet te lang.
+- Als het om uren gaat: benoem "Werkzaamheden" en eventueel 2-3 bullets.
+- Geen gevoelige info.
+Geef ALLEEN de tekst terug.
+
+Ruwe omschrijving:
+{{OMSCHRIJVING_RAW}}
+
+Context (optioneel):
+Klant: {{KLANT_NAAM}}
+Datum: {{DATUM}}
+Uren: {{UREN}}

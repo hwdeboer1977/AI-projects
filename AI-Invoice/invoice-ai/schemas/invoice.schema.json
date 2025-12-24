@@ -1,0 +1,48 @@
+{
+  "type": "object",
+  "required": ["klant", "factuur", "regels", "missing"],
+  "properties": {
+    "klant": {
+      "type": "object",
+      "properties": {
+        "naam": { "type": ["string", "null"] },
+        "adres": { "type": ["string", "null"] },
+        "postcode_plaats": { "type": ["string", "null"] }
+      },
+      "required": ["naam"]
+    },
+    "factuur": {
+      "type": "object",
+      "properties": {
+        "factuurdatum": { "type": ["string", "null"] },
+        "vervaldatum": { "type": ["string", "null"] },
+        "btw_percentage": { "type": ["number", "null"] },
+        "valuta": { "type": "string", "default": "EUR" }
+      },
+      "required": ["factuurdatum", "btw_percentage"]
+    },
+    "regels": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "datum",
+          "aantal_uren",
+          "tarief_per_uur",
+          "omschrijving_raw"
+        ],
+        "properties": {
+          "datum": { "type": ["string", "null"] },
+          "aantal_uren": { "type": ["number", "null"] },
+          "tarief_per_uur": { "type": ["number", "null"] },
+          "omschrijving_raw": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "missing": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

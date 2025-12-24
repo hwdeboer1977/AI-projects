@@ -1,0 +1,12 @@
+{
+  "status": "WARNING",
+  "warnings": [
+    "Btw percentage is 21, wat correct is, maar controleer of dit het juiste percentage is voor de geleverde diensten."
+  ],
+  "errors": [],
+  "suggestions": [
+    "Controleer of de factuurdatum en vervaldatum correct zijn.",
+    "Overweeg om de omschrijving van de regels te verduidelijken.",
+    "Zorg ervoor dat de totaalbedragen correct zijn berekend."
+  ]
+}

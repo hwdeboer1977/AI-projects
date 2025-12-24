@@ -1,5 +1,5 @@
 *.env*
 *.venv*
-*.xlsx
-*.docx
-*.pdf
+*.xlsx*
+*.docx*
+*.pdf*
