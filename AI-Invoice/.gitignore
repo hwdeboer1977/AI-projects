@@ -3,3 +3,5 @@
 *.xlsx*
 *.docx*
 *.pdf*
+invoice-ai/invoice_ai_out/*.json
+invoice-ai/invoice_ai_out/*.txt

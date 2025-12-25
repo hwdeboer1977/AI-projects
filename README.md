@@ -11,10 +11,11 @@ AI-Projects/
 │
 ├── AI-Accounting-Agent/
 ├── AI-Agents/
+├── AI-Chatbot/
+├── AI-Invoice/
+├── AI-Knowledge-Agent/
 ├── Agentic-Newsletter/
 ├── Web-Summarization-Agent/
-├── AI-Knowledge-Agent/
-├── AI-Chatbot/
 ```
 
 ---
@@ -33,15 +34,36 @@ Collection of smaller personal AI agents (fitness tracking, nutrition, automatio
 
 ---
 
-### **Agentic-Newsletter**
+### **AI-Chatbot**
 
-Autonomous multi-agent news pipeline for clustering, summarization, and narrative tracking. Linux / WSL focused.
+A customer support chatbot POC for Bolder Outdoor, a fictional e-commerce outdoor gear store.
+
+**Core features:**
+
+- Conversational AI customer support
+- Polished outdoor-themed UI
+- Full knowledge of products, shipping, returns, and policies
+- Quick action buttons for common questions
+- Responsive design
+- Accessibility support
 
 ---
 
-### **Web-Summarization-Agent**
+### **AI-Invoice**
 
-Web page → structured summary engine supporting strict (source-grounded) and enriched summarization modes.
+AI-augmented invoicing system for Dutch ZZP freelancers. Separates deterministic logic (Excel → Word/PDF) from AI enrichment.
+
+**Core features:**
+
+- Professional invoice description rewriting (NL)
+- Automated audit/QA (VAT, dates, consistency)
+- Smart line item categorization (development, consulting, testing, etc.)
+- Client email draft generation
+- Anomaly detection against historical invoices
+- Payment reminder generation (escalating tone)
+- Year-end client summaries
+
+**Design principle:** Excel remains source of truth for all calculations. AI handles text quality, validation, and insights only.
 
 ---
 
@@ -62,18 +84,15 @@ Designed as a foundation for **internal Q&A assistants**, compliance tools, and 
 
 ---
 
-### **AI-Chatbot**
+### **Agentic-Newsletter**
 
-A customer support chatbot POC for Bolder Outdoor, a fictional e-commerce outdoor gear store.
+Autonomous multi-agent news pipeline for clustering, summarization, and narrative tracking. Linux / WSL focused.
 
-**Core features:**
+---
 
-- Conversational AI customer support
-- Polished outdoor-themed UI
-- Full knowledge of products, shipping, returns, and policies
-- Quick action buttons for common questions
-- Responsive design
-- Accessibility support
+### **Web-Summarization-Agent**
+
+Web page → structured summary engine supporting strict (source-grounded) and enriched summarization modes.
 
 ---
 
