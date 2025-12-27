@@ -16,9 +16,11 @@ summary*.md
 
 # Ignore old files
 src/OLD_FILES/
+OLD_FILES/
 
 # Ignore Json key
 nutrition*.json
+*.yml
 
 # Ignore backup or checkpoint files
 *BACKUP.json
