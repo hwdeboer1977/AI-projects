@@ -3,6 +3,7 @@ import logging
 import os
 import datetime
 import re
+import json
 
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -19,13 +20,41 @@ from food_service import (
     parse_food_input, search_food_database, ai_estimate_nutrition,
     save_food_to_database, increment_usage, scale_nutrition
 )
+from analytics_service import (
+    calculate_remaining, format_remaining_message,
+    get_suggestions, format_suggestions_message, get_macro_insight
+)
 
 # === ENVIRONMENT SETUP ===
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN_NUTRITION")
 
 # === NUTRITION TARGETS (per day) ===
-DAILY_TARGETS = {"calories": 2130.0, "protein": 160.0, "fat": 60.0, "carbs": 240.0}
+DEFAULT_TARGETS = {"calories": 2130.0, "protein": 160.0, "fat": 60.0, "carbs": 240.0}
+TARGETS_FILE = os.path.join(os.path.dirname(__file__), "targets.json")
+
+
+def load_targets_from_file() -> dict:
+    """Load targets from file, or return defaults."""
+    try:
+        if os.path.exists(TARGETS_FILE):
+            with open(TARGETS_FILE, "r") as f:
+                return json.load(f)
+    except Exception as e:
+        logger.warning(f"Could not load targets: {e}")
+    return DEFAULT_TARGETS.copy()
+
+
+def save_targets_to_file(targets: dict):
+    """Save targets to file for persistence."""
+    try:
+        with open(TARGETS_FILE, "w") as f:
+            json.dump(targets, f, indent=2)
+    except Exception as e:
+        logger.error(f"Could not save targets: {e}")
+
+
+DAILY_TARGETS = load_targets_from_file()
 
 # === LOGGING ===
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -50,7 +79,8 @@ def log_food_to_google_sheets(date, item, quantity, calories, fat, carbs, protei
     sheet.append_row([date, item, quantity, calories, fat, carbs, protein])
 
 
-def get_daily_summary():
+def get_today_totals() -> dict:
+    """Get today's nutrition totals from Google Sheets."""
     def parse_number(cell):
         try:
             return float(re.sub(r"[^\d.]", "", str(cell).strip()))
@@ -64,7 +94,11 @@ def get_daily_summary():
     creds = ServiceAccountCredentials.from_json_keyfile_name(secret_path, scope)
     client = gspread.authorize(creds)
     sheet = client.open("Calories_log").worksheet("Calories")
-    rows = sheet.get_all_values()[1:]
+    rows = sheet.get_all_values()
+    
+    # Skip header row if it exists
+    if rows and not re.match(r"^\d{4}-\d{2}-\d{2}$", rows[0][0].strip()):
+        rows = rows[1:]
 
     today = datetime.date.today().isoformat().strip()
     totals = {"calories": 0.0, "fat": 0.0, "carbs": 0.0, "protein": 0.0}
@@ -75,6 +109,12 @@ def get_daily_summary():
             totals["fat"] += parse_number(row[4])
             totals["carbs"] += parse_number(row[5])
             totals["protein"] += parse_number(row[6])
+    
+    return totals
+
+
+def get_daily_summary():
+    totals = get_today_totals()
 
     def pct(val, target):
         return round((val / target) * 100, 1) if target else 0.0
@@ -112,8 +152,12 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "4️⃣ Not found → AI estimates, you can save it\n\n"
         "✓ = Verified by you\n"
         "🧠 = AI estimated\n\n"
-        "/summary - Today's nutrition\n"
-        "/reset_day - Clear today",
+        "*Commands:*\n"
+        "/summary - Today's nutrition totals\n"
+        "/remaining - What's left to hit targets\n"
+        "/suggest - Food suggestions based on gaps\n"
+        "/targets - View/update daily targets\n"
+        "/reset_day - Clear today's entries",
         parse_mode=ParseMode.MARKDOWN
     )
 
@@ -127,6 +171,111 @@ async def summary(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Error: {e}")
 
 
+async def remaining(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show remaining macros for the day with progress bars."""
+    try:
+        totals = get_today_totals()
+        rem = calculate_remaining(totals, DAILY_TARGETS)
+        msg = format_remaining_message(rem)
+        
+        # Add insight
+        insight = get_macro_insight(rem)
+        msg += f"\n\n{insight}"
+        
+        await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+    except Exception as e:
+        logger.exception("remaining error")
+        await update.message.reply_text(f"❌ Error: {e}")
+
+
+async def suggest(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Suggest foods based on remaining macros."""
+    try:
+        totals = get_today_totals()
+        rem = calculate_remaining(totals, DAILY_TARGETS)
+        suggestions = get_suggestions(rem, limit=5)
+        msg = format_suggestions_message(suggestions, rem)
+        
+        await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+    except Exception as e:
+        logger.exception("suggest error")
+        await update.message.reply_text(f"❌ Error: {e}")
+
+
+async def targets(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """View or update daily nutrition targets."""
+    global DAILY_TARGETS
+    
+    args = context.args
+    
+    if not args:
+        # Show current targets
+        msg = (
+            "🎯 *Daily Targets*\n\n"
+            f"• Calories: {DAILY_TARGETS['calories']:.0f} kcal\n"
+            f"• Protein: {DAILY_TARGETS['protein']:.0f}g\n"
+            f"• Fat: {DAILY_TARGETS['fat']:.0f}g\n"
+            f"• Carbs: {DAILY_TARGETS['carbs']:.0f}g\n\n"
+            "_To update, use:_\n"
+            "`/targets <cal> <protein> <fat> <carbs>`\n\n"
+            "_Example:_\n"
+            "`/targets 2000 150 70 200`"
+        )
+        await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+        return
+    
+    if len(args) != 4:
+        await update.message.reply_text(
+            "❌ Please provide 4 values:\n"
+            "`/targets <calories> <protein> <fat> <carbs>`\n\n"
+            "Example: `/targets 2000 150 70 200`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+    
+    try:
+        cal, prot, fat, carbs = map(float, args)
+        
+        # Validate reasonable ranges
+        if cal < 1000 or cal > 5000:
+            await update.message.reply_text("❌ Calories should be between 1000-5000")
+            return
+        if prot < 30 or prot > 400:
+            await update.message.reply_text("❌ Protein should be between 30-400g")
+            return
+        if fat < 20 or fat > 200:
+            await update.message.reply_text("❌ Fat should be between 20-200g")
+            return
+        if carbs < 20 or carbs > 600:
+            await update.message.reply_text("❌ Carbs should be between 20-600g")
+            return
+        
+        # Update targets
+        DAILY_TARGETS["calories"] = cal
+        DAILY_TARGETS["protein"] = prot
+        DAILY_TARGETS["fat"] = fat
+        DAILY_TARGETS["carbs"] = carbs
+        
+        # Save to file for persistence
+        save_targets_to_file(DAILY_TARGETS)
+        
+        await update.message.reply_text(
+            "✅ *Targets updated!*\n\n"
+            f"• Calories: {cal:.0f} kcal\n"
+            f"• Protein: {prot:.0f}g\n"
+            f"• Fat: {fat:.0f}g\n"
+            f"• Carbs: {carbs:.0f}g",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+    except ValueError:
+        await update.message.reply_text(
+            "❌ Invalid numbers. Use:\n"
+            "`/targets 2000 150 70 200`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+
 async def reset_day(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         today = datetime.date.today().isoformat()
@@ -135,10 +284,16 @@ async def reset_day(update: Update, context: ContextTypes.DEFAULT_TYPE):
         client = gspread.authorize(creds)
         sheet = client.open("Calories_log").worksheet("Calories")
         rows = sheet.get_all_values()
-        to_delete = [i for i, row in enumerate(rows, start=1) if row and row[0] == today]
+        
+        # Find rows with today's date (skip header if exists)
+        to_delete = []
+        for i, row in enumerate(rows, start=1):
+            if row and row[0].strip() == today:
+                to_delete.append(i)
+        
         for idx in reversed(to_delete):
             sheet.delete_rows(idx)
-        await update.message.reply_text("✅ Today's log reset!")
+        await update.message.reply_text(f"✅ Today's log reset! ({len(to_delete)} entries removed)")
     except Exception as e:
         logger.exception("reset_day error")
         await update.message.reply_text(f"❌ Error: {e}")
@@ -654,6 +809,10 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("summary", summary))
+    app.add_handler(CommandHandler("remaining", remaining))
+    app.add_handler(CommandHandler("left", remaining))  # Alias
+    app.add_handler(CommandHandler("suggest", suggest))
+    app.add_handler(CommandHandler("targets", targets))
     app.add_handler(CommandHandler("reset_day", reset_day))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))

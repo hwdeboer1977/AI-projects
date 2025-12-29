@@ -9,6 +9,8 @@ A Telegram bot that tracks your nutrition with AI-powered food recognition and a
 - 📊 **Google Sheets logging** - daily tracking with macro summaries
 - ✓ **Verified foods** - correct AI estimates once, accurate forever
 - 🇳🇱 **Dutch-friendly** - recognizes AH, Jumbo, and Dutch products
+- 📈 **Smart suggestions** - recommends foods based on remaining macros
+- 🎯 **Configurable targets** - set your own daily calorie/macro goals
 
 ## How It Works
 
@@ -17,7 +19,7 @@ You: "250g magere kwark AH"
          ↓
 Bot checks PostgreSQL database
          ↓
-Found? → Log instantly (cached values)
+Found? → Confirm & log (cached values)
 Not found? → AI estimates → You approve/edit → Saved for next time
          ↓
 Logged to Google Sheets
@@ -31,8 +33,10 @@ Logged to Google Sheets
 AI-Nutrition-Agent/
 ├── Nutrition_agent.py    # Main Telegram bot
 ├── food_service.py       # AI parsing & database lookups
+├── analytics_service.py  # Remaining macros & suggestions
 ├── db_models.py          # PostgreSQL models (SQLAlchemy)
 ├── init_db.py            # Database initialization
+├── targets.json          # Saved daily targets (auto-generated)
 ├── requirements.txt
 ├── .env                  # Secrets (not committed)
 └── .venv/                # Virtual environment
@@ -135,6 +139,19 @@ GOOGLE_SERVICE_ACCOUNT_JSON=C:\path\to\your-service-account.json
 
 ---
 
+## 5. Google Sheets Setup
+
+1. Create a Google Cloud project
+2. Enable Google Sheets API & Google Drive API
+3. Create a Service Account and download the JSON key
+4. Create a Google Sheet named `Calories_log` with a worksheet `Calories`
+5. Share the sheet with your service account email
+
+Sheet columns (no header row needed):
+`Date | Item | Quantity | Calories | Fat | Carbs | Protein`
+
+---
+
 ## 6. Initialize Database
 
 ```powershell
@@ -159,21 +176,80 @@ python Nutrition_agent.py
 Expected output:
 
 ```
-2024-12-27 09:00:00 - INFO - 🚀 NutritionBot starting...
+2024-12-29 09:00:00 - INFO - 🚀 NutritionBot starting...
 ```
 
 ---
 
 ## Telegram Commands
 
-| Command      | Description                              |
-| ------------ | ---------------------------------------- |
-| `/start`     | Welcome message                          |
-| `/summary`   | Today's calories & macros vs targets     |
-| `/reset_day` | Clear today's entries from Google Sheets |
-| `/help`      | Show help                                |
+| Command                               | Description                                                |
+| ------------------------------------- | ---------------------------------------------------------- |
+| `/start`                              | Welcome message                                            |
+| `/help`                               | Show all commands and how the bot works                    |
+| `/summary`                            | Today's calories & macros vs targets                       |
+| `/remaining`                          | What's left to hit your daily targets (with progress bars) |
+| `/suggest`                            | Get food suggestions based on what you still need          |
+| `/targets`                            | View current daily targets                                 |
+| `/targets <cal> <prot> <fat> <carbs>` | Update daily targets                                       |
+| `/reset_day`                          | Clear today's entries from Google Sheets                   |
 
-### Logging Food
+### Example: `/remaining`
+
+```
+📊 Remaining for Today
+
+✅ Calories: 0 kcal left
+   ██████████ 100%
+
+🔴 Protein: 80g left
+   ██████░░░░ 60%
+
+🟢 Fat: 10g left
+   ████████░░ 83%
+
+🟡 Carbs: 50g left
+   ███████░░░ 70%
+
+💪 Focus on protein to hit your target
+```
+
+### Example: `/suggest`
+
+```
+💡 Suggested Foods
+Based on: 80g protein, 500 kcal remaining
+
+1. Magere Kwark (Albert Heijn) ✓
+   📏 250g → 150 kcal, 25g P
+   high protein
+
+2. Chicken Breast 🧠
+   📏 200g → 220 kcal, 46g P
+   high protein
+
+3. Eggs
+   📏 2 piece → 140 kcal, 12g P
+   frequently used
+```
+
+### Example: `/targets`
+
+```
+🎯 Daily Targets
+
+• Calories: 2130 kcal
+• Protein: 160g
+• Fat: 60g
+• Carbs: 240g
+
+To update, use:
+/targets <cal> <protein> <fat> <carbs>
+```
+
+---
+
+## Logging Food
 
 Just send natural text:
 
@@ -184,21 +260,75 @@ magere kwark AH
 1 banana
 ```
 
-### Response Types
+### When Food is Found in Database
 
-- **✅ Logged from database** - Found in your food cache
-- **✓** - Verified by you (you corrected AI values)
-- **🧠** - AI estimated (not yet verified)
-- **🔍 Not in database** - New food, AI will estimate
+```
+📦 Found in database ✓
 
-### Saving New Foods
+Magere Kwark (Albert Heijn)
+📏 250 g
 
-When AI estimates a new food, you can:
+• Calories: 150 kcal
+• Protein: 25.0g
+• Fat: 0.5g
+• Carbs: 7.0g
 
-- **Save & Log** - Add to database for future
-- **Edit values** - Correct the macros (per 100g), saves as verified ✓
-- **Log once** - Don't save to database
-- **Cancel** - Don't log anything
+Use this data?
+
+[✅ Yes, log it] [📝 Update values]
+[🆕 Save as new]  [❌ Cancel]
+```
+
+Options:
+
+- **Yes, log it** - Use cached values
+- **Update values** - Enter new nutrition values, updates existing entry
+- **Save as new** - Save as a different food entry
+- **Cancel** - Don't log
+
+### When Food is NOT in Database
+
+```
+🧠 AI Estimation
+
+Banana
+📏 1 piece
+
+• Calories: 89 kcal
+• Protein: 1.1g
+• Fat: 0.3g
+• Carbs: 23g
+
+[✅ Save & Log] [📝 Edit values]
+[📋 Log once]   [❌ Cancel]
+```
+
+### Editing Values
+
+When you click "Edit values", you choose the input type:
+
+```
+📝 How will you enter the values?
+
+[📏 Per 100g]  [🍌 Per piece]
+[🍽️ Per serving] [❌ Cancel]
+```
+
+Then enter 4 numbers: `calories protein fat carbs`
+
+Example for a banana (per piece): `89 1.1 0.3 23`
+
+---
+
+## Response Indicators
+
+| Symbol | Meaning                              |
+| ------ | ------------------------------------ |
+| ✅     | Successfully logged                  |
+| ✓      | Verified by you (manually corrected) |
+| 🧠     | AI estimated (not yet verified)      |
+| 📦     | Found in database                    |
+| 🔍     | Not in database, using AI            |
 
 ---
 
@@ -208,20 +338,22 @@ When AI estimates a new food, you can:
 
 Your personal food database:
 
-| Column           | Type   | Description                   |
-| ---------------- | ------ | ----------------------------- |
-| id               | int    | Primary key                   |
-| name             | string | Food name                     |
-| brand            | string | Brand/store (nullable)        |
-| display_name     | string | "Magere Kwark (Albert Heijn)" |
-| search_name      | string | Lowercase for matching        |
-| search_brand     | string | Lowercase brand for matching  |
-| calories_per_100 | float  | Calories per 100g             |
-| protein_per_100  | float  | Protein per 100g              |
-| fat_per_100      | float  | Fat per 100g                  |
-| carbs_per_100    | float  | Carbs per 100g                |
-| verified         | bool   | User confirmed accuracy       |
-| times_used       | int    | Usage counter                 |
+| Column           | Type   | Description                      |
+| ---------------- | ------ | -------------------------------- |
+| id               | int    | Primary key                      |
+| name             | string | Food name                        |
+| brand            | string | Brand/store (nullable)           |
+| display_name     | string | "Magere Kwark (Albert Heijn)"    |
+| search_name      | string | Lowercase for matching           |
+| search_brand     | string | Lowercase brand for matching     |
+| calories_per_100 | float  | Calories per 100g (or per piece) |
+| protein_per_100  | float  | Protein per 100g                 |
+| fat_per_100      | float  | Fat per 100g                     |
+| carbs_per_100    | float  | Carbs per 100g                   |
+| default_serving  | float  | Default serving size             |
+| serving_unit     | string | "g", "ml", "piece"               |
+| verified         | bool   | User confirmed accuracy          |
+| times_used       | int    | Usage counter (for suggestions)  |
 
 ---
 
@@ -246,14 +378,14 @@ psql -U nutrition -d nutrition -c "SELECT * FROM food_items;"
 
 ### Daily Targets
 
-Edit in `Nutrition_agent.py`:
+Use the `/targets` command in Telegram, or edit `targets.json`:
 
-```python
-DAILY_TARGETS = {
-    "calories": 2130.0,
-    "protein": 160.0,
-    "fat": 60.0,
-    "carbs": 240.0
+```json
+{
+  "calories": 2130.0,
+  "protein": 160.0,
+  "fat": 60.0,
+  "carbs": 240.0
 }
 ```
 
@@ -266,9 +398,52 @@ BRAND_ALIASES = {
     "ah": "albert heijn",
     "jumbo": "jumbo",
     "lidl": "lidl",
+    "aldi": "aldi",
+    "plus": "plus",
+    "dirk": "dirk",
     # Add more...
 }
 ```
+
+---
+
+## Troubleshooting
+
+### Bot won't start
+
+```
+Missing TELEGRAM_BOT_TOKEN_NUTRITION
+```
+
+→ Check your `.env` file exists and has the correct variable name
+
+### Database connection error
+
+```
+connection refused
+```
+
+→ Make sure PostgreSQL is running: `pg_isready -h localhost -p 5432`
+
+### OpenAI error
+
+```
+OPENAI_API_KEY_HW is not set
+```
+
+→ Check `.env` has `OPENAI_API_KEY_HW=sk-...`
+
+### Google Sheets error
+
+```
+Missing Google service account file
+```
+
+→ Check `GOOGLE_SERVICE_ACCOUNT_JSON` path in `.env`
+
+### Summary shows wrong totals
+
+→ Make sure your Google Sheet doesn't have a header row, or add one with column names
 
 ---
 
@@ -276,6 +451,7 @@ BRAND_ALIASES = {
 
 - [ ] Fuzzy matching (pg_trgm) - "magere kwark" matches "magere franse kwark"
 - [ ] `/foods` command - list database entries from Telegram
+- [ ] `/delete` command - remove foods from database
 - [ ] Meal patterns - "my usual breakfast"
 - [ ] Weekly/monthly analytics
 - [ ] Barcode scanning
