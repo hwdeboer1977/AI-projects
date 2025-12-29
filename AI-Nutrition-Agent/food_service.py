@@ -13,7 +13,7 @@ from openai import OpenAI
 from sqlalchemy import func
 from db_models import get_session, FoodItem
 from dotenv import load_dotenv
-load_dotenv()  # Add this line after imports
+load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY_HW")
 CHAT_MODEL = "gpt-4o-mini"
@@ -223,5 +223,67 @@ def increment_usage(food_id: int):
         if food:
             food.times_used += 1
             session.commit()
+    finally:
+        session.close()
+
+
+def update_food_in_database(food_id: int, cal: float, prot: float, fat: float, carbs: float, verified: bool = True) -> Optional[FoodItem]:
+    """Update existing food item with new nutrition values."""
+    session = get_session()
+    try:
+        food = session.query(FoodItem).filter(FoodItem.id == food_id).first()
+        if food:
+            food.calories_per_100 = cal
+            food.protein_per_100 = prot
+            food.fat_per_100 = fat
+            food.carbs_per_100 = carbs
+            food.verified = verified
+            session.commit()
+            session.refresh(food)
+            return food
+        return None
+    finally:
+        session.close()
+
+
+def get_food_by_id(food_id: int) -> Optional[FoodItem]:
+    """Get food item by ID."""
+    session = get_session()
+    try:
+        return session.query(FoodItem).filter(FoodItem.id == food_id).first()
+    finally:
+        session.close()
+
+
+def save_food_with_name(new_name: str, calories_per_100: float, protein_per_100: float, 
+                        fat_per_100: float, carbs_per_100: float, brand: Optional[str] = None,
+                        verified: bool = False) -> FoodItem:
+    """Save a new food item with a specific name."""
+    # Handle "null" string as None
+    if brand and brand.lower() in ["null", "none", ""]:
+        brand = None
+    
+    display_name = new_name.title()
+    if brand:
+        display_name += f" ({brand.title()})"
+    
+    session = get_session()
+    try:
+        food = FoodItem(
+            name=new_name.title(),
+            brand=brand.title() if brand else None,
+            display_name=display_name,
+            search_name=new_name.lower(),
+            search_brand=brand.lower() if brand else None,
+            calories_per_100=calories_per_100,
+            protein_per_100=protein_per_100,
+            fat_per_100=fat_per_100,
+            carbs_per_100=carbs_per_100,
+            verified=verified
+        )
+        session.add(food)
+        session.commit()
+        session.refresh(food)
+        return food
     finally:
         session.close()
