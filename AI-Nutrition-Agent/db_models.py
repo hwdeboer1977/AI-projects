@@ -41,6 +41,7 @@ class FoodItem(Base):
     # Default serving info
     default_serving = Column(Float, default=100)
     serving_unit = Column(String, default="g")
+    grams_per_serving = Column(Float, nullable=True)
     
     # Metadata
     verified = Column(Boolean, default=False)

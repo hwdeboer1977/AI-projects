@@ -18,7 +18,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 from food_service import (
     parse_food_input, search_food_database, ai_estimate_nutrition,
-    save_food_to_database, increment_usage, scale_nutrition
+    save_food_to_database, increment_usage, scale_nutrition,
+    update_grams_per_serving
 )
 from analytics_service import (
     calculate_remaining, format_remaining_message,
@@ -315,6 +316,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if context.user_data.get("awaiting_new_name"):
             await handle_new_name(update, context, user_input)
             return
+        
+        # Check if we're waiting for serving size in grams
+        if context.user_data.get("awaiting_serving_size"):
+            await handle_serving_size_input(update, context, user_input)
+            return
+        
+        # Check if we're waiting for grams per unit (for manual entry)
+        if context.user_data.get("awaiting_grams_per_unit"):
+            await handle_grams_per_unit_input(update, context, user_input)
+            return
 
         context.user_data["raw_input"] = user_input
 
@@ -331,8 +342,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         match = search_food_database(parsed)
 
         if match:
-            # Found in database - ask for confirmation
-            await ask_use_cached(update, context, match, parsed)
+            # Check if we need serving size info
+            if match.needs_serving_size:
+                await ask_serving_size(update, context, match, parsed)
+            else:
+                # Found in database - ask for confirmation
+                await ask_use_cached(update, context, match, parsed)
         else:
             # Not found - use AI
             await estimate_new_food(update, context, user_input, parsed)
@@ -367,6 +382,136 @@ async def log_cached_food(update, context, match, parsed):
         f"• Carbs: {nutr['carbs']:.1f}g",
         parse_mode=ParseMode.MARKDOWN
     )
+
+
+async def ask_serving_size(update, context, match, parsed):
+    """Ask user for the serving size in grams when not known."""
+    food = match.food_item
+    
+    # Store for later use
+    context.user_data["cached_match"] = {
+        "food_id": food.id,
+        "display_name": food.display_name,
+        "verified": food.verified,
+        "calories_per_100": food.calories_per_100,
+        "protein_per_100": food.protein_per_100,
+        "fat_per_100": food.fat_per_100,
+        "carbs_per_100": food.carbs_per_100,
+    }
+    context.user_data["awaiting_serving_size"] = True
+    
+    unit_text = match.serving_unit_requested or "serving"
+    
+    await update.message.reply_text(
+        f"📦 *Found:* {food.display_name}\n\n"
+        f"I don't know how many grams 1 {unit_text} is.\n\n"
+        f"📏 *How many grams is 1 {unit_text}?*\n\n"
+        f"_Example: type `500` for 500g per {unit_text}_",
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+
+async def handle_serving_size_input(update, context, text: str):
+    """Handle user's input for serving size in grams."""
+    try:
+        grams = float(text.strip().replace("g", "").replace("G", ""))
+        
+        if grams <= 0:
+            await update.message.reply_text("❌ Please enter a positive number of grams.")
+            return
+        
+        cached = context.user_data.get("cached_match", {})
+        parsed = context.user_data.get("parsed", {})
+        food_id = cached.get("food_id")
+        
+        if not food_id:
+            await update.message.reply_text("❌ Error: No food selected. Please start over.")
+            context.user_data.clear()
+            return
+        
+        # Update the database with grams_per_serving
+        food = update_grams_per_serving(food_id, grams)
+        
+        if not food:
+            await update.message.reply_text("❌ Error updating database.")
+            context.user_data.clear()
+            return
+        
+        # Now calculate nutrition
+        quantity = parsed.get("quantity", 1)
+        factor = (grams / 100.0) * quantity
+        
+        nutr = {
+            "calories": round(cached["calories_per_100"] * factor, 1),
+            "protein": round(cached["protein_per_100"] * factor, 1),
+            "fat": round(cached["fat_per_100"] * factor, 1),
+            "carbs": round(cached["carbs_per_100"] * factor, 1),
+        }
+        
+        # Log to Google Sheets
+        log_food_to_google_sheets(
+            datetime.date.today().isoformat(),
+            cached.get("display_name", "Unknown"),
+            f"{quantity} {parsed.get('unit', 'serving')} ({grams}g each)",
+            nutr["calories"], nutr["fat"], nutr["carbs"], nutr["protein"]
+        )
+        
+        increment_usage(food_id)
+        
+        context.user_data["awaiting_serving_size"] = False
+        
+        badge = "✓" if cached.get("verified") else "🧠"
+        await update.message.reply_text(
+            f"✅ *Logged* {badge}\n\n"
+            f"*{cached.get('display_name')}*\n"
+            f"📏 {quantity} {parsed.get('unit', 'serving')} × {grams}g = {quantity * grams:.0f}g\n\n"
+            f"• Calories: {nutr['calories']:.0f} kcal\n"
+            f"• Protein: {nutr['protein']:.1f}g\n"
+            f"• Fat: {nutr['fat']:.1f}g\n"
+            f"• Carbs: {nutr['carbs']:.1f}g\n\n"
+            f"_Saved {grams}g per serving for next time!_",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        context.user_data.clear()
+        
+    except ValueError:
+        await update.message.reply_text(
+            "❌ Please enter a number (e.g., `500` or `500g`)",
+            parse_mode=ParseMode.MARKDOWN
+        )
+
+
+async def handle_grams_per_unit_input(update, context, text: str):
+    """Handle user's input for grams per serving/piece when entering nutrition manually."""
+    try:
+        grams = float(text.strip().replace("g", "").replace("G", ""))
+        
+        if grams <= 0:
+            await update.message.reply_text("❌ Please enter a positive number of grams.")
+            return
+        
+        # Store the grams per unit
+        context.user_data["grams_per_unit"] = grams
+        context.user_data["awaiting_grams_per_unit"] = False
+        context.user_data["awaiting_edit"] = True
+        
+        edit_mode = context.user_data.get("edit_mode", "perserving")
+        unit_text = "serving" if edit_mode == "perserving" else "piece"
+        
+        await update.message.reply_text(
+            f"✅ Got it: 1 {unit_text} = {grams}g\n\n"
+            f"📝 *Now enter nutrition values per 1 {unit_text}:*\n\n"
+            "Send 4 numbers:\n"
+            "`calories protein fat carbs`\n\n"
+            "Example: `650 35 35 90`",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        
+    except ValueError:
+        await update.message.reply_text(
+            "❌ Please enter a number (e.g., `500` or `500g`)",
+            parse_mode=ParseMode.MARKDOWN
+        )
 
 
 async def ask_use_cached(update, context, match, parsed):
@@ -601,22 +746,28 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data in ["edit_per100", "edit_perpiece", "edit_perserving"]:
-        context.user_data["edit_mode"] = data.replace("edit_", "")  # "per100", "perpiece", "perserving"
+        edit_mode = data.replace("edit_", "")  # "per100", "perpiece", "perserving"
+        context.user_data["edit_mode"] = edit_mode
         
-        mode_text = {
-            "per100": "per 100g/100ml",
-            "perpiece": "per 1 piece/item",
-            "perserving": "per 1 serving"
-        }
-        
-        await query.edit_message_text(
-            f"📝 *Enter values {mode_text[context.user_data['edit_mode']]}*\n\n"
-            "Send 4 numbers:\n"
-            "`calories protein fat carbs`\n\n"
-            "Example: `89 1.1 0.3 23`",
-            parse_mode=ParseMode.MARKDOWN
-        )
-        context.user_data["awaiting_edit"] = True
+        # For serving/piece mode, first ask how many grams per serving
+        if edit_mode in ["perserving", "perpiece"]:
+            unit_text = "serving" if edit_mode == "perserving" else "piece"
+            context.user_data["awaiting_grams_per_unit"] = True
+            await query.edit_message_text(
+                f"📏 *How many grams is 1 {unit_text}?*\n\n"
+                f"_Example: type `500` for 500g per {unit_text}_",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        else:
+            # Per 100g - go straight to nutrition input
+            await query.edit_message_text(
+                "📝 *Enter values per 100g/100ml*\n\n"
+                "Send 4 numbers:\n"
+                "`calories protein fat carbs`\n\n"
+                "Example: `89 1.1 0.3 23`",
+                parse_mode=ParseMode.MARKDOWN
+            )
+            context.user_data["awaiting_edit"] = True
 
     elif data == "save_cancel":
         await query.edit_message_text("❌ Cancelled")
@@ -640,47 +791,63 @@ async def handle_manual_edit(update, context, text: str):
         estimation = context.user_data.get("estimation", {})
         cached = context.user_data.get("cached_match", {})
         update_existing = context.user_data.get("update_existing", False)
-        edit_mode = context.user_data.get("edit_mode", "per100")  # Default to per 100g
+        edit_mode = context.user_data.get("edit_mode", "per100")
+        grams_per_unit = context.user_data.get("grams_per_unit")  # From earlier input
         
-        # Convert input values to per-100 for storage
-        # User entered values as: per100, perpiece, or perserving
+        # Convert input values to per-100g for storage
         if edit_mode == "per100":
             # Already per 100g, store as-is
             cal_per_100, prot_per_100, fat_per_100, carbs_per_100 = cal, prot, fat, carbs
+            grams_per_serving_to_store = None
         else:
-            # Values are per piece/serving - store as per-100 but also remember serving size
-            # For simplicity, we'll store the per-piece values AS the per-100 values
-            # and set default_serving to 1 piece
-            cal_per_100, prot_per_100, fat_per_100, carbs_per_100 = cal, prot, fat, carbs
-            estimation["serving_unit"] = "piece" if edit_mode == "perpiece" else "serving"
-            estimation["default_serving"] = 1
+            # Values are per piece/serving
+            # We have grams_per_unit from the earlier question
+            if grams_per_unit and grams_per_unit > 0:
+                # Convert to per-100g: if 1 serving = 500g and has 650 cal, then per 100g = 650/5 = 130 cal
+                factor_to_100 = 100.0 / grams_per_unit
+                cal_per_100 = cal * factor_to_100
+                prot_per_100 = prot * factor_to_100
+                fat_per_100 = fat * factor_to_100
+                carbs_per_100 = carbs * factor_to_100
+                grams_per_serving_to_store = grams_per_unit
+            else:
+                # Fallback: store values as-is (treat as per-100g equivalent)
+                cal_per_100, prot_per_100, fat_per_100, carbs_per_100 = cal, prot, fat, carbs
+                grams_per_serving_to_store = 100
 
         # Calculate nutrition for the actual logged quantity
         unit = parsed.get("unit", "g")
         quantity = parsed.get("quantity", 1)
         
         if unit in ["piece", "pieces", "stuk", "stuks", "serving", "servings"] or edit_mode in ["perpiece", "perserving"]:
-            # For pieces/servings: multiply by quantity
-            factor = quantity
+            # For pieces/servings: use grams_per_unit if available
+            if grams_per_unit and grams_per_unit > 0:
+                total_grams = grams_per_unit * quantity
+                factor = total_grams / 100.0
+            else:
+                factor = quantity
         else:
             # For grams: scale by quantity/100
             factor = quantity / 100.0
         
         nutr = {
-            "calories": round(cal * factor, 1),
-            "protein": round(prot * factor, 1),
-            "fat": round(fat * factor, 1),
-            "carbs": round(carbs * factor, 1),
+            "calories": round(cal_per_100 * factor, 1),
+            "protein": round(prot_per_100 * factor, 1),
+            "fat": round(fat_per_100 * factor, 1),
+            "carbs": round(carbs_per_100 * factor, 1),
         }
 
         if update_existing and cached.get("food_id"):
             # Update existing food in database
-            from food_service import update_food_in_database
+            from food_service import update_food_in_database, update_grams_per_serving
             food = update_food_in_database(
                 cached["food_id"], 
                 cal_per_100, prot_per_100, fat_per_100, carbs_per_100,
                 verified=True
             )
+            # Also update grams_per_serving if we have it
+            if grams_per_serving_to_store:
+                update_grams_per_serving(cached["food_id"], grams_per_serving_to_store)
             display_name = food.display_name if food else cached.get("display_name", "Unknown")
         else:
             # Save as new verified entry
@@ -688,35 +855,49 @@ async def handle_manual_edit(update, context, text: str):
             estimation["protein_per_100"] = prot_per_100
             estimation["fat_per_100"] = fat_per_100
             estimation["carbs_per_100"] = carbs_per_100
+            if grams_per_serving_to_store:
+                estimation["grams_per_serving"] = grams_per_serving_to_store
 
             from food_service import ParsedInput
             parsed_obj = ParsedInput(
                 quantity=parsed.get("quantity", 1),
-                unit=parsed.get("unit", "piece") if edit_mode != "per100" else parsed.get("unit", "g"),
+                unit=parsed.get("unit", "g"),
                 food_name=parsed.get("food_name", ""),
                 brand=parsed.get("brand")
             )
             food = save_food_to_database(estimation, parsed_obj, verified=True)
+            
+            # Update grams_per_serving after saving
+            if grams_per_serving_to_store and hasattr(food, 'id'):
+                from food_service import update_grams_per_serving
+                update_grams_per_serving(food.id, grams_per_serving_to_store)
+            
             display_name = food.display_name
 
         log_food_to_google_sheets(
             datetime.date.today().isoformat(),
             display_name,
-            f"{parsed.get('quantity', 1)} {parsed.get('unit', 'piece')}",
+            f"{parsed.get('quantity', 1)} {parsed.get('unit', 'serving')}" + (f" ({grams_per_unit}g each)" if grams_per_unit else ""),
             nutr["calories"], nutr["fat"], nutr["carbs"], nutr["protein"]
         )
 
         context.user_data["awaiting_edit"] = False
         context.user_data["update_existing"] = False
         context.user_data["edit_mode"] = None
+        context.user_data["grams_per_unit"] = None
 
         mode_label = {"per100": "per 100g", "perpiece": "per piece", "perserving": "per serving"}.get(edit_mode, "")
         action = "Updated" if update_existing else "Saved"
         
+        # Show what was stored
+        stored_info = f"Stored: {cal_per_100:.0f} kcal, {prot_per_100:.0f}g P (per 100g)"
+        if grams_per_serving_to_store:
+            stored_info += f"\n1 serving = {grams_per_serving_to_store}g"
+        
         await update.message.reply_text(
             f"✅ *{action} & Logged* ✓\n\n"
             f"*{display_name}*\n\n"
-            f"Stored: {cal:.0f} kcal, {prot:.0f}g P ({mode_label})\n"
+            f"{stored_info}\n"
             f"Logged: {nutr['calories']:.0f} kcal, {nutr['protein']:.1f}g P\n\n"
             f"_Marked as verified!_",
             parse_mode=ParseMode.MARKDOWN
