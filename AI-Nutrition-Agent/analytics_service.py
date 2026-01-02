@@ -3,9 +3,24 @@
 Analytics and suggestion engine for NutritionBot.
 Provides insights on remaining macros and food suggestions.
 """
+import os
+import json
+import re
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 from db_models import get_session, FoodItem
+from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY_HW")
+CHAT_MODEL = "gpt-4o-mini"
+
+
+def get_openai_client() -> OpenAI:
+    if not OPENAI_API_KEY:
+        raise RuntimeError("OPENAI_API_KEY_HW is not set")
+    return OpenAI(api_key=OPENAI_API_KEY)
 
 
 @dataclass
@@ -288,3 +303,185 @@ def get_macro_insight(remaining: RemainingMacros) -> str:
             insights.append("👍 On track for the day")
     
     return "\n".join(insights)
+
+
+@dataclass
+class AISuggestion:
+    """An AI-generated food suggestion."""
+    name: str
+    portion: str
+    calories: float
+    protein: float
+    fat: float
+    carbs: float
+    reason: str
+    where_to_get: str  # "supermarket", "restaurant", "homemade"
+
+
+def get_ai_suggestions(remaining: RemainingMacros, 
+                       db_suggestions: List[FoodSuggestion],
+                       limit: int = 5) -> List[AISuggestion]:
+    """
+    Get AI-powered food suggestions based on remaining macros.
+    Complements database suggestions with new ideas.
+    
+    Args:
+        remaining: What macros are left for the day
+        db_suggestions: Already suggested foods from database (to avoid duplicates)
+        limit: Number of AI suggestions to generate
+    
+    Returns:
+        List of AI-generated suggestions
+    """
+    try:
+        client = get_openai_client()
+    except RuntimeError:
+        return []  # No API key, skip AI suggestions
+    
+    # Build context about what's already suggested
+    already_suggested = [s.food.display_name for s in db_suggestions]
+    
+    # Determine priority
+    priorities = []
+    if remaining.protein > 30:
+        priorities.append(f"HIGH PROTEIN (need {remaining.protein:.0f}g more)")
+    if remaining.calories > 500:
+        priorities.append(f"CALORIES ({remaining.calories:.0f} kcal remaining)")
+    if remaining.fat < 15:
+        priorities.append("LOW FAT (fat budget almost used)")
+    if remaining.carbs < 20:
+        priorities.append("LOW CARB (carb budget almost used)")
+    
+    if not priorities:
+        priorities.append("BALANCED meal to finish the day")
+    
+    prompt = f"""Suggest {limit} food options for someone in the Netherlands.
+
+REMAINING MACROS:
+- Calories: {remaining.calories:.0f} kcal
+- Protein: {remaining.protein:.0f}g
+- Fat: {remaining.fat:.0f}g  
+- Carbs: {remaining.carbs:.0f}g
+
+PRIORITY: {', '.join(priorities)}
+
+ALREADY SUGGESTED (avoid these): {', '.join(already_suggested) if already_suggested else 'None'}
+
+Give practical suggestions available in Dutch supermarkets (Albert Heijn, Jumbo) or easy to make at home.
+Include specific products when relevant (e.g. "Almhof kwark", "AH kipfilet").
+
+JSON array only:
+[
+  {{
+    "name": "Food name",
+    "portion": "amount with unit",
+    "calories": number,
+    "protein": number,
+    "fat": number,
+    "carbs": number,
+    "reason": "why this fits the needs",
+    "where_to_get": "supermarket/restaurant/homemade"
+  }}
+]"""
+
+    try:
+        response = client.chat.completions.create(
+            model=CHAT_MODEL,
+            messages=[
+                {"role": "system", "content": "You are a Dutch nutritionist. Give practical, accurate suggestions with realistic macro values. Focus on common Dutch supermarket products."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7
+        )
+        
+        content = response.choices[0].message.content.strip()
+        content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content, flags=re.DOTALL)
+        data = json.loads(content)
+        
+        suggestions = []
+        for item in data[:limit]:
+            suggestions.append(AISuggestion(
+                name=item.get("name", "Unknown"),
+                portion=item.get("portion", "1 serving"),
+                calories=float(item.get("calories", 0)),
+                protein=float(item.get("protein", 0)),
+                fat=float(item.get("fat", 0)),
+                carbs=float(item.get("carbs", 0)),
+                reason=item.get("reason", ""),
+                where_to_get=item.get("where_to_get", "supermarket")
+            ))
+        
+        return suggestions
+        
+    except Exception as e:
+        print(f"AI suggestion error: {e}")
+        return []
+
+
+def format_ai_suggestions_message(ai_suggestions: List[AISuggestion]) -> str:
+    """Format AI suggestions as a Telegram message."""
+    
+    if not ai_suggestions:
+        return ""
+    
+    msg = "\n🤖 *AI Suggestions*\n"
+    msg += "_Additional ideas based on your macros:_\n\n"
+    
+    for i, s in enumerate(ai_suggestions, 1):
+        # Emoji for where to get
+        where_emoji = {
+            "supermarket": "🛒",
+            "restaurant": "🍽️",
+            "homemade": "👨‍🍳"
+        }.get(s.where_to_get, "🛒")
+        
+        msg += f"*{i}. {s.name}* {where_emoji}\n"
+        msg += f"   📏 {s.portion} → {s.calories:.0f} kcal, {s.protein:.0f}g P\n"
+        msg += f"   _{s.reason}_\n\n"
+    
+    return msg
+
+
+def get_combined_suggestions(remaining: RemainingMacros, 
+                             db_limit: int = 3, 
+                             ai_limit: int = 5) -> tuple:
+    """
+    Get both database and AI suggestions.
+    
+    Returns:
+        Tuple of (db_suggestions, ai_suggestions)
+    """
+    # First get database suggestions
+    db_suggestions = get_suggestions(remaining, limit=db_limit)
+    
+    # Then get AI suggestions (avoiding duplicates)
+    ai_suggestions = get_ai_suggestions(remaining, db_suggestions, limit=ai_limit)
+    
+    return db_suggestions, ai_suggestions
+
+
+def format_combined_suggestions(remaining: RemainingMacros,
+                                db_suggestions: List[FoodSuggestion],
+                                ai_suggestions: List[AISuggestion]) -> str:
+    """Format both database and AI suggestions together."""
+    
+    msg = ""
+    
+    # Database suggestions first
+    if db_suggestions:
+        msg += "💡 *Your Foods*\n"
+        msg += f"_Based on: {remaining.protein:.0f}g protein, {remaining.calories:.0f} kcal remaining_\n\n"
+        
+        for i, s in enumerate(db_suggestions, 1):
+            verified = "✓" if s.food.verified else ""
+            msg += f"*{i}. {s.food.display_name}* {verified}\n"
+            msg += f"   📏 {s.portion} → {s.would_add['calories']:.0f} kcal, {s.would_add['protein']:.0f}g P\n"
+            msg += f"   _{s.reason}_\n\n"
+    else:
+        msg += "📦 _No foods in your database yet_\n\n"
+    
+    # AI suggestions
+    if ai_suggestions:
+        msg += format_ai_suggestions_message(ai_suggestions)
+    
+    return msg

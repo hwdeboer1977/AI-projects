@@ -333,12 +333,17 @@ def save_food_to_database(estimation: dict, parsed: ParsedInput, verified: bool 
             carbs_per_100=estimation.get("carbs_per_100", 0),
             default_serving=default_serving,
             serving_unit=serving_unit,
-            grams_per_serving=grams_per_serving,
             verified=verified
         )
         session.add(food)
         session.commit()
         session.refresh(food)
+        
+        # Update grams_per_serving separately (column exists in DB but not in model)
+        if grams_per_serving:
+            food.grams_per_serving = grams_per_serving
+            session.commit()
+            session.refresh(food)
         
         logger.info(f"Saved with ID: {food.id}")
         return food

@@ -194,8 +194,12 @@ async def suggest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         totals = get_today_totals()
         rem = calculate_remaining(totals, DAILY_TARGETS)
-        suggestions = get_suggestions(rem, limit=5)
-        msg = format_suggestions_message(suggestions, rem)
+        
+        # Get both database and AI suggestions
+        from analytics_service import get_combined_suggestions, format_combined_suggestions
+        db_suggestions, ai_suggestions = get_combined_suggestions(rem, db_limit=3, ai_limit=5)
+        
+        msg = format_combined_suggestions(rem, db_suggestions, ai_suggestions)
         
         await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
     except Exception as e:
