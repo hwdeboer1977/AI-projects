@@ -2,9 +2,7 @@
 
 A **Telegram-based fitness tracking agent** that logs workouts from natural language messages, estimates calories burned, and stores results in Google Sheets.
 
-The bot is **rules-first and deterministic**, with an **LLM used only as a fallback for language interpretation** when messages are ambiguous or incomplete.
-
-This design keeps the system **cheap, predictable, and auditable**, while still handling messy human input.
+This project uses a **rules-first architecture**, with an **LLM used only as a fallback for language interpretation** when messages are ambiguous or incomplete.
 
 ---
 
@@ -23,25 +21,27 @@ This design keeps the system **cheap, predictable, and auditable**, while still 
 
 ## 🧠 AI Design (Important)
 
-This project **does not use AI for calculations or decisions**.
+This bot is **not an “AI calculator”**.
 
-**What the LLM is used for:**
+**What AI / LLM is used for**
 
-- Interpreting natural language (e.g. “lekker gefietst uurtje stevig”)
-- Mapping text → structured fields:
-  - exercise
-  - duration (minutes)
-  - intensity
+- Interpreting natural language workout descriptions  
+  (e.g. _“lekker gefietst uurtje stevig”_)
+- Mapping free text → structured fields:
+  - `exercise`
+  - `duration_min`
+  - `intensity`
 
-**What the LLM is NOT used for:**
+**What AI / LLM is NOT used for**
 
 - Calorie calculations
 - Writing to Google Sheets
 - Business logic or control flow
+- Deleting or mutating data
 
-> The LLM is only a _language interpreter_, not an executor.
+> The LLM acts only as a **language interpreter**, not an executor.
 
-If the LLM is disabled or unavailable, the bot still works using rule-based parsing.
+If the LLM is disabled or unavailable, the bot continues to work using **rule-based parsing only**.
 
 ---
 
@@ -51,7 +51,7 @@ If the LLM is disabled or unavailable, the bot still works using rule-based pars
 Telegram message
       ↓
 Rule-based parser (regex, keywords)
-      ↓ (only if missing/ambiguous)
+      ↓ (only if missing / ambiguous)
 LLM fallback (JSON-only interpretation)
       ↓
 Deterministic logic (MET calories)
@@ -65,7 +65,9 @@ Google Sheets (persistent storage)
 
 ```
 AI-Fitness-Agent/
-├── Fitness_agent_llm.py   # Main bot (rules + optional LLM fallback)
+├── Fitness_agent.py       # v1 – basic rules-only version
+├── Fitness_agent_v2.py    # v2 – improved UX + multi-user (rules-only)
+├── Fitness_agent_v3.py    # v3 – rules + LLM fallback (ACTIVE)
 ├── README.md
 ├── requirements.txt
 ├── .env                  # NOT committed
@@ -128,7 +130,7 @@ FITNESS_LLM_ENABLED=1
 FITNESS_LLM_MODEL=gpt-4o-mini
 ```
 
-If `FITNESS_LLM_ENABLED` is not set, the bot runs **rules-only**.
+If `FITNESS_LLM_ENABLED` is not set, **v3 runs rules-only**.
 
 ---
 
@@ -141,7 +143,7 @@ Canonical types:
 - `fitness (weights)`
 - `fitness (cardio)`
 
-Aliases supported (EN + NL):
+Aliases supported (English + Dutch):
 
 - `walk`, `wandelen`
 - `fietsen`, `cycling`, `bike`
@@ -178,7 +180,7 @@ If information is missing, the bot will **ask one follow-up question at a time**
 - `/setweight 78` – set your personal weight (kg)
 - `/summary` – today’s totals (per user)
 - `/undo` – remove your last logged workout
-- `/reset_day` – delete your entries for today
+- `/reset_day` – delete your entries for today (per user)
 
 ---
 
@@ -192,19 +194,19 @@ date | exercise | intensity | duration_min | calories | user_id | raw_text
 
 The `user_id` column enables:
 
-- multi-user summaries
 - safe undo
+- multi-user summaries
 - future analytics (streaks, weekly stats)
 
-You may hide this column in Sheets if desired.
+You may hide this column in Google Sheets if desired.
 
 ---
 
-## ▶️ Run the Bot
+## ▶️ Run the Bot (v3)
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
-python Fitness_agent_llm.py
+python Fitness_agent_v3.py
 ```
 
 If successful, the bot will start polling Telegram.
@@ -216,7 +218,7 @@ If successful, the bot will start polling Telegram.
 - ✅ Production-stable
 - ✅ Deterministic core logic
 - ✅ Optional AI interpretation
-- 🚀 Ready for weekly stats, streaks, or nutrition integration
+- 🚀 Ready for further AI upgrades (learning, coaching, planning)
 
 ---
 
