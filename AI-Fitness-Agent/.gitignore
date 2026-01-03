@@ -16,6 +16,7 @@ summary*.md
 
 # Ignore old files
 src/OLD_FILES/
+OLD/
 
 # Ignore Json key
 Fitness*.json
