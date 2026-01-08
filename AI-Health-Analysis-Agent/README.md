@@ -2,7 +2,7 @@
 
 > ⚠️ **Work in Progress** — This project is under active development.
 
-This project contains a **local Python analysis agent** that reads nutrition and exercise data from two Google Sheets, aggregates them, and provides **AI-powered insights**.
+This project contains a **local Python analysis agent** that reads nutrition and exercise data from two Google Sheets, aggregates them, and provides **AI-powered insights** — plus a **React dashboard** and **Flask API** for visual tracking.
 
 ## Data Sources
 
@@ -31,6 +31,13 @@ Deterministic aggregation of your logs:
 | **Daily Suggestions**      | `ai_daily_suggestions.py`  | Analyzes today's remaining macros and suggests specific foods to hit your targets                              |
 | **Weekly Coach**           | `ai_weekly_suggestions.py` | Reviews a full week of data and provides 3 personalized insights about patterns, progress, and actionable tips |
 | **Conversational Queries** | `ai_conversational.py`     | Ask natural language questions like "How was my protein this week?" or "Did I exercise yesterday?"             |
+
+### Web Dashboard
+
+| Component    | Directory   | Description                                                          |
+| ------------ | ----------- | -------------------------------------------------------------------- |
+| **Frontend** | `frontend/` | React dashboard with charts, macro tracking, and 7-day trends        |
+| **Backend**  | `backend/`  | Flask REST API that serves aggregated health data from Google Sheets |
 
 ---
 
@@ -74,6 +81,20 @@ AI-Health-Analysis-Agent/
 ├── ai_daily_suggestions.py     # AI: daily food suggestions
 ├── ai_weekly_suggestions.py    # AI: weekly pattern analysis
 ├── ai_conversational.py        # AI: natural language queries
+├── backend/                    # Flask REST API
+│   ├── app.py                  # API routes & Google Sheets integration
+│   ├── requirements.txt
+│   └── .env
+├── frontend/                   # React dashboard
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── HealthDashboard.jsx
+│   │   │   └── HealthDashboard.css
+│   │   ├── api.js
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   ├── package.json
+│   └── vite.config.js
 ├── .env
 ├── nutrition_google.json
 ├── fitness_google.json
@@ -195,6 +216,94 @@ python ai_conversational.py
 
 ---
 
+## Web Dashboard
+
+The web dashboard provides a visual interface for tracking your health data.
+
+### Backend Setup
+
+```powershell
+cd backend
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+Create `backend/.env`:
+
+```env
+NUTRITION_SHEET_ID=your-nutrition-sheet-id
+EXERCISE_SHEET_ID=your-exercise-sheet-id
+NUTRITION_GOOGLE_SA_JSON=./nutrition_google.json
+FITNESS_GOOGLE_SA_JSON=./fitness_google.json
+```
+
+Start the API server:
+
+```powershell
+python app.py
+```
+
+Server runs at `http://localhost:5000`
+
+#### API Endpoints
+
+| Method | Endpoint             | Description                   |
+| ------ | -------------------- | ----------------------------- |
+| `GET`  | `/api/health`        | Health data for last 7 days   |
+| `GET`  | `/api/health/<days>` | Health data for N days (1-90) |
+| `GET`  | `/api/health/today`  | Today's data only             |
+| `GET`  | `/api/targets`       | Daily macro/calorie targets   |
+| `GET`  | `/api/health/mock`   | Mock data for testing         |
+
+### Frontend Setup
+
+```powershell
+cd frontend
+npm install
+```
+
+Create `frontend/.env`:
+
+```env
+VITE_API_URL=http://localhost:5000
+```
+
+Start the dev server:
+
+```powershell
+npm run dev
+```
+
+Dashboard runs at `http://localhost:5173`
+
+### Dashboard Features
+
+- **Calorie Ring** — circular progress with remaining/over indicator
+- **Macro Bars** — protein, carbs, fat progress against targets
+- **Exercise Card** — daily minutes, sessions, workout types
+- **7-Day Charts** — calorie trend (line) and exercise minutes (bar)
+- **Weekly Summary** — averages and logging streaks
+- **Day Selector** — navigate between the last 7 days
+
+### Running Both Together
+
+Terminal 1 (backend):
+
+```powershell
+cd backend && python app.py
+```
+
+Terminal 2 (frontend):
+
+```powershell
+cd frontend && npm run dev
+```
+
+Open `http://localhost:5173` in your browser.
+
+---
+
 ## Common errors & fixes
 
 | Error                                      | Cause                                 | Fix                                         |
@@ -203,6 +312,8 @@ python ai_conversational.py
 | `WorksheetNotFound`                        | Worksheet name mismatch               | Use exact tab name from Google Sheets       |
 | `OpenAIError: api_key must be set`         | Missing API key                       | Add `OPENAI_API_KEY` to `.env`              |
 | Empty dates or zero totals                 | No logs for that day                  | Expected behavior, script skips empty dates |
+| `CORS error` in browser                    | Backend not running or wrong URL      | Ensure backend is running on port 5000      |
+| `Failed to fetch` in frontend              | API connection issue                  | Check `VITE_API_URL` in frontend `.env`     |
 
 ---
 
@@ -210,11 +321,15 @@ python ai_conversational.py
 
 Planned extensions:
 
+- [x] Web dashboard with React frontend
+- [x] REST API backend
 - [ ] Integrate AI modules into main script
 - [ ] CLI flags: `--date`, `--week`, `--month`
 - [ ] Telegram commands: `/today`, `/week`, `/coach`
 - [ ] Natural language food logging ("had 2 eggs for breakfast")
 - [ ] Deployment as background worker (Render/VPS)
+- [ ] Dashboard authentication
+- [ ] Historical data export (CSV/PDF)
 
 ---
 
@@ -226,6 +341,14 @@ Add the following to `.gitignore`:
 .env
 *.json
 .venv/
+node_modules/
+dist/
 ```
 
 Never commit credentials to version control.
+
+---
+
+## License
+
+MIT
