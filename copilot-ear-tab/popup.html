@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 420px;
+      min-height: 500px;
+      background: #1a1a2e;
+      color: #eee;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      padding: 16px;
+    }
+    h1 { font-size: 18px; margin-bottom: 16px; text-align: center; }
+    
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #666;
+      margin-bottom: 6px;
+    }
+    
+    .api-section { margin-bottom: 12px; }
+    .api-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .api-input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #252542;
+      color: #eee;
+      font-size: 13px;
+    }
+    .api-input:focus { outline: none; border-color: #6366f1; }
+    .api-input::placeholder { color: #666; }
+    
+    .btn {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-save { background: #6366f1; color: white; }
+    .btn-save:hover { background: #5254cc; }
+    .btn-clear { background: #444; color: white; }
+    .btn-clear:hover { background: #ef4444; }
+    
+    .btn-capture {
+      width: 100%;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      background: #22c55e;
+      color: white;
+      margin-bottom: 8px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .btn-capture:hover { background: #1ea34d; }
+    .btn-capture.capturing { background: #ef4444; }
+    .btn-capture.capturing:hover { background: #dc2626; }
+    
+    .btn-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .btn-row .btn { flex: 1; }
+    .btn-secondary { background: transparent; border: 1px solid #444; color: #888; }
+    .btn-secondary:hover { background: #333; color: #fff; }
+    .btn-ask { background: #2563eb; color: white; }
+    .btn-ask:hover { background: #1d4ed8; }
+    
+    .status {
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 12px;
+      min-height: 18px;
+    }
+    .status.active { color: #22c55e; }
+    .status.error { color: #ef4444; }
+    
+    .panel { margin-bottom: 12px; }
+    .panel h2 {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 6px;
+    }
+    .transcript-box {
+      background: #252542;
+      border-radius: 8px;
+      padding: 10px;
+      min-height: 80px;
+      max-height: 120px;
+      overflow-y: auto;
+      font-size: 13px;
+      color: #ccc;
+      line-height: 1.5;
+    }
+    .suggestion-box {
+      background: #1e3a5f;
+      border: 1px solid #2563eb;
+      border-radius: 8px;
+      padding: 10px;
+      min-height: 100px;
+      max-height: 160px;
+      overflow-y: auto;
+      font-size: 13px;
+      color: #e0e7ff;
+      line-height: 1.5;
+    }
+    .suggestion-box.loading { opacity: 0.7; font-style: italic; }
+    
+    .note {
+      font-size: 11px;
+      color: #555;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .note a { color: #6366f1; }
+  </style>
+</head>
+<body>
+  <h1>🎧 Copilot Ear (Tab Audio)</h1>
+
+  <div class="api-section">
+    <div class="section-title">Deepgram API Key (for transcription)</div>
+    <div class="api-row">
+      <input type="text" class="api-input" id="deepgramKey" placeholder="Paste Deepgram key...">
+      <button class="btn btn-save" id="saveDeepgram">Save</button>
+    </div>
+  </div>
+
+  <div class="api-section">
+    <div class="section-title">Groq API Key (for AI suggestions)</div>
+    <div class="api-row">
+      <input type="text" class="api-input" id="groqKey" placeholder="Paste Groq key (gsk_...)">
+      <button class="btn btn-save" id="saveGroq">Save</button>
+    </div>
+  </div>
+
+  <button class="btn btn-capture" id="captureBtn">🔊 Capture Tab Audio</button>
+  
+  <div class="btn-row">
+    <button class="btn btn-secondary" id="resetBtn">Reset</button>
+    <button class="btn btn-ask" id="askBtn">Ask AI</button>
+  </div>
+
+  <div class="status" id="status">Ready — open a tab with audio first</div>
+
+  <div class="panel">
+    <h2>Transcript (from tab audio)</h2>
+    <div class="transcript-box" id="transcript">Waiting for audio...</div>
+  </div>
+
+  <div class="panel">
+    <h2>AI Suggestion</h2>
+    <div class="suggestion-box" id="suggestion">AI suggestions will appear here...</div>
+  </div>
+
+  <div class="note">
+    Captures audio from the current tab (Google Meet, YouTube, etc.)<br>
+    Get Deepgram key: <a href="https://console.deepgram.com" target="_blank">console.deepgram.com</a> (free $200 credit)
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

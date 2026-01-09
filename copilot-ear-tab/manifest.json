@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Copilot Ear (Tab Audio)",
+  "version": "2.0.0",
+  "description": "AI assistant that transcribes tab audio using Deepgram and suggests answers",
+  "permissions": ["storage", "tabCapture"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "48": "icon.png"
+    }
+  },
+  "icons": {
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}
