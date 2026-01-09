@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Copilot Ear",
+  "version": "1.0.0",
+  "description": "Real-time AI assistant that listens and suggests answers",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_icon": {
+      "48": "icon.png"
+    }
+  },
+  "icons": {
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
