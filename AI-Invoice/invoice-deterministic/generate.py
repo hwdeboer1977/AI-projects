@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from datetime import datetime, date
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Dict, Any, Optional, List
@@ -123,9 +124,10 @@ def docx_to_pdf(paths: List[str], out_dir: str):
 # ---------------- main ----------------
 
 def generate(
-    excel_path="facturen.xlsx",
-    template_path="template.docx",
-    out_dir="out",
+    excel_path: str = "facturen.xlsx",
+    template_path: str = "template.docx",
+    out_dir: str = "out",
+    only_invoice: Optional[str] = None,   # ✅ NEW
 ):
     os.makedirs(out_dir, exist_ok=True)
 
@@ -139,15 +141,26 @@ def generate(
 
     for inv in invoices:
         inv_no = str(inv["Factuurnummer"])
+
+        # ✅ Filter: generate only selected invoice if provided
+        if only_invoice and inv_no != only_invoice:
+            continue
+
+        if inv_no not in regels_per_factuur:
+            raise KeyError(f"Geen regels gevonden voor Factuurnummer {inv_no}")
+
         lines = regels_per_factuur[inv_no]
 
         doc = Document(template_path)
 
         # -------- omschrijving boven tabel --------
-        omschrijving = "\n".join(l["Omschrijving"] for l in lines)
+        omschrijving = "\n".join(str(l.get("Omschrijving", "") or "") for l in lines)
 
         # -------- tabel --------
         table = find_lines_table(doc)
+        if table is None:
+            raise RuntimeError("Kon geen tabel vinden met headers: Datum / Aantal uren / Tarief / BTW")
+
         tmpl = table.rows[1]
 
         net_total = Decimal("0.00")
@@ -183,9 +196,9 @@ def generate(
             "{{FACTUURDATUM}}": dmy(to_date(inv["Factuurdatum"])),
             "{{VERVALDATUM}}": dmy(to_date(inv["Vervaldatum"])),
             "{{DEBITEURNR}}": str(inv.get("Debiteurnummer", "")),
-            "{{KLANT_NAAM}}": inv["Klantnaam"],
-            "{{KLANT_ADRES}}": inv["Straat + huisnr"],
-            "{{KLANT_POSTCODE_PLAATS}}": inv["Postcode + Plaats"],
+            "{{KLANT_NAAM}}": str(inv["Klantnaam"]),
+            "{{KLANT_ADRES}}": str(inv["Straat + huisnr"]),
+            "{{KLANT_POSTCODE_PLAATS}}": str(inv["Postcode + Plaats"]),
             "{{OMSCHRIJVING}}": omschrijving,
             "{{TOTAAL_EXCL}}": money(net_total),
             "{{BTW_TOTAAL}}": money(vat_total),
@@ -199,9 +212,20 @@ def generate(
         generated.append(out_docx)
         print(f"✅ DOCX: {out_docx}")
 
+        # ✅ If only one invoice requested, we can stop after generating it
+        if only_invoice:
+            break
+
+    if not generated:
+        raise ValueError(f"Geen factuur gevonden met Factuurnummer={only_invoice!r}")
+
     docx_to_pdf(generated, out_dir)
     print("✅ PDF’s gegenereerd")
 
 
 if __name__ == "__main__":
-    generate()
+    # Optional CLI usage:
+    #   python generate.py              -> generate all
+    #   python generate.py BS-2026-01   -> generate only that invoice
+    only = sys.argv[1] if len(sys.argv) > 1 else None
+    generate(only_invoice=only)

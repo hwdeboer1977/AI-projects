@@ -206,7 +206,7 @@ You may hide this column in Google Sheets if desired.
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
-python Fitness_agent_v3.py
+python Fitness_agent.py
 ```
 
 If successful, the bot will start polling Telegram.

@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Copilot Code</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* === FULLSCREEN MODE === */
+        body.fullscreen-mode .header,
+        body.fullscreen-mode .controls,
+        body.fullscreen-mode .response-panel,
+        body.fullscreen-mode .panel-header {
+            display: none !important;
+        }
+
+        body.fullscreen-mode .main-content {
+            height: 100vh;
+            padding: 0;
+        }
+
+        body.fullscreen-mode .preview-panel {
+            border-radius: 0;
+            height: 100vh;
+        }
+
+        body.fullscreen-mode .panel-content {
+            padding: 0;
+            height: 100vh;
+        }
+
+        body.fullscreen-mode #videoPreview {
+            border-radius: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: contain;
+        }
+
+        /* Fullscreen toggle button - always visible */
+        .fullscreen-toggle {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 9999;
+            background: rgba(74, 222, 128, 0.9);
+            color: #1a1a2e;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .fullscreen-toggle:hover {
+            background: #4ade80;
+            transform: scale(1.05);
+        }
+
+        body.fullscreen-mode .fullscreen-toggle {
+            background: rgba(74, 222, 128, 0.3);
+            color: #4ade80;
+            border: 1px solid #4ade80;
+        }
+
+        body.fullscreen-mode .fullscreen-toggle:hover {
+            background: rgba(74, 222, 128, 0.5);
+        }
+
+        /* Keyboard hint in fullscreen */
+        .fullscreen-hint {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: #aaa;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 9999;
+        }
+
+        body.fullscreen-mode .fullscreen-hint {
+            display: block;
+        }
+
+        /* === NORMAL MODE === */
+        .header {
+            background: #16213e;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #0f3460;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #4ade80;
+        }
+
+        .config-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .api-key-input {
+            background: #0f3460;
+            border: 1px solid #4ade80;
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 5px;
+            width: 200px;
+        }
+
+        .camera-select {
+            background: #0f3460;
+            border: 1px solid #4ade80;
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 5px;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #4ade80;
+            color: #1a1a2e;
+        }
+
+        .btn-primary:hover {
+            background: #22c55e;
+        }
+
+        .camera-status {
+            color: #4ade80;
+            font-size: 14px;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            height: calc(100vh - 160px);
+            transition: all 0.3s ease;
+        }
+
+        .panel {
+            background: #16213e;
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        .preview-panel {
+            flex: 1;
+        }
+
+        .response-panel {
+            flex: 1;
+            max-width: 50%;
+        }
+
+        .panel-header {
+            background: #0f3460;
+            padding: 10px 15px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-content {
+            flex: 1;
+            padding: 15px;
+            overflow: auto;
+        }
+
+        #videoPreview {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+            border-radius: 5px;
+        }
+
+        #responseArea {
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        #responseArea code {
+            background: #0f3460;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        #responseArea pre {
+            background: #0d1117;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        /* Bottom Controls */
+        .controls {
+            display: flex;
+            gap: 15px;
+            padding: 15px 20px;
+            background: #16213e;
+        }
+
+        .control-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, #4ade80, #22c55e);
+            color: #1a1a2e;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(74, 222, 128, 0.3);
+        }
+
+        .question-btn {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #1a1a2e;
+        }
+
+        .question-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(251, 191, 36, 0.3);
+        }
+
+        .clear-btn {
+            background: #374151;
+            color: #fff;
+        }
+
+        .clear-btn:hover {
+            background: #4b5563;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #16213e;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 15px;
+        }
+
+        .modal-content textarea {
+            width: 100%;
+            height: 100px;
+            background: #0f3460;
+            border: 1px solid #4ade80;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #4ade80;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Fullscreen Toggle Button - Always Visible -->
+    <button class="fullscreen-toggle" onclick="toggleFullscreen()" title="Toggle Fullscreen (F1)">
+        <span id="fullscreenIcon">⛶</span>
+        <span id="fullscreenText">Fullscreen</span>
+    </button>
+
+    <!-- Hint shown in fullscreen mode -->
+    <div class="fullscreen-hint">
+        Press <strong>F1</strong> or <strong>ESC</strong> to exit fullscreen
+    </div>
+
+    <div class="header">
+        <div class="logo">
+            💻 Copilot Code
+        </div>
+        <div class="config-section">
+            <span>OpenAI API Key:</span>
+            <input type="password" id="apiKey" class="api-key-input" placeholder="sk-..." value="">
+            <button class="btn btn-primary" onclick="saveApiKey()">Save</button>
+            
+            <span>Camera:</span>
+            <select id="cameraSelect" class="camera-select" onchange="switchCamera()"></select>
+            <span id="cameraStatus" class="camera-status">Connecting...</span>
+        </div>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        <div class="panel preview-panel">
+            <div class="panel-header">
+                📹 Live Preview (Capture Card)
+            </div>
+            <div class="panel-content">
+                <video id="videoPreview" autoplay playsinline muted></video>
+            </div>
+        </div>
+        
+        <div class="panel response-panel" id="responsePanel">
+            <div class="panel-header">
+                🤖 AI Response
+            </div>
+            <div class="panel-content">
+                <div id="responseArea">
+                    Click "Analyze Screen" to start...
+                    
+Shortcuts:
+• F1 - Toggle fullscreen preview
+• F2 - Analyze screen
+• F3 - Custom question
+• F4 - Clear chat
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="control-btn analyze-btn" onclick="analyzeScreen()">
+            📸 Analyze Screen (F2)
+        </button>
+        <button class="control-btn question-btn" onclick="showQuestionModal()">
+            💡 Custom Question (F3)
+        </button>
+        <button class="control-btn clear-btn" onclick="clearChat()">
+            🗑️ Clear Chat (F4)
+        </button>
+    </div>
+
+    <!-- Question Modal -->
+    <div class="modal" id="questionModal">
+        <div class="modal-content">
+            <h3>💡 Ask a Question</h3>
+            <textarea id="customQuestion" placeholder="Enter your question..."></textarea>
+            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 15px;">
+                <input type="checkbox" id="includeScreenshot" checked>
+                Include current screenshot
+            </label>
+            <div class="modal-buttons">
+                <button class="btn" style="background: #374151; color: #fff;" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="submitQuestion()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+    <script>
+        let videoStream = null;
+        let isFullscreen = false;
+        const video = document.getElementById('videoPreview');
+        const cameraSelect = document.getElementById('cameraSelect');
+        const cameraStatus = document.getElementById('cameraStatus');
+        const responseArea = document.getElementById('responseArea');
+
+        // Toggle Fullscreen Mode
+        function toggleFullscreen() {
+            isFullscreen = !isFullscreen;
+            document.body.classList.toggle('fullscreen-mode', isFullscreen);
+            
+            const icon = document.getElementById('fullscreenIcon');
+            const text = document.getElementById('fullscreenText');
+            
+            if (isFullscreen) {
+                icon.textContent = '✕';
+                text.textContent = 'Exit';
+            } else {
+                icon.textContent = '⛶';
+                text.textContent = 'Fullscreen';
+            }
+        }
+
+        // Initialize cameras
+        async function initCameras() {
+            try {
+                await navigator.mediaDevices.getUserMedia({ video: true });
+                
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                
+                cameraSelect.innerHTML = '';
+                videoDevices.forEach((device, index) => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `Camera ${index + 1}`;
+                    cameraSelect.appendChild(option);
+                });
+
+                const captureCard = videoDevices.find(d => 
+                    d.label.toLowerCase().includes('capture') || 
+                    d.label.toLowerCase().includes('cam link') ||
+                    d.label.toLowerCase().includes('hd pro')
+                );
+                
+                if (captureCard) {
+                    cameraSelect.value = captureCard.deviceId;
+                }
+
+                await startCamera(cameraSelect.value);
+            } catch (err) {
+                console.error('Camera init error:', err);
+                cameraStatus.textContent = 'Camera error';
+                cameraStatus.style.color = '#ef4444';
+            }
+        }
+
+        async function startCamera(deviceId) {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        deviceId: deviceId ? { exact: deviceId } : undefined,
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                });
+                
+                video.srcObject = videoStream;
+                cameraStatus.textContent = 'Camera connected';
+                cameraStatus.style.color = '#4ade80';
+            } catch (err) {
+                console.error('Camera start error:', err);
+                cameraStatus.textContent = 'Camera error';
+                cameraStatus.style.color = '#ef4444';
+            }
+        }
+
+        function switchCamera() {
+            startCamera(cameraSelect.value);
+        }
+
+        function captureFrame() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            return canvas.toDataURL('image/jpeg', 0.9);
+        }
+
+        function saveApiKey() {
+            const apiKey = document.getElementById('apiKey').value;
+            fetch('/save_api_key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: apiKey })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('API key saved!');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            });
+        }
+
+        async function analyzeScreen() {
+            const image = captureFrame();
+            responseArea.innerHTML = '<div class="loading"></div> Analyzing...';
+            
+            // Exit fullscreen to see response
+            if (isFullscreen) {
+                toggleFullscreen();
+            }
+            
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image, include_image: true })
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    responseArea.innerHTML = '❌ Error: ' + data.error;
+                } else {
+                    responseArea.innerHTML = marked.parse(data.response);
+                    Prism.highlightAll();
+                }
+            } catch (err) {
+                responseArea.innerHTML = '❌ Error: ' + err.message;
+            }
+        }
+
+        function showQuestionModal() {
+            // Exit fullscreen to show modal
+            if (isFullscreen) {
+                toggleFullscreen();
+            }
+            document.getElementById('questionModal').classList.add('active');
+            document.getElementById('customQuestion').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('questionModal').classList.remove('active');
+        }
+
+        async function submitQuestion() {
+            const question = document.getElementById('customQuestion').value;
+            const includeImage = document.getElementById('includeScreenshot').checked;
+            
+            if (!question.trim()) return;
+            
+            closeModal();
+            responseArea.innerHTML = '<div class="loading"></div> Thinking...';
+            
+            try {
+                const body = { prompt: question, include_image: includeImage };
+                if (includeImage) {
+                    body.image = captureFrame();
+                }
+                
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    responseArea.innerHTML = '❌ Error: ' + data.error;
+                } else {
+                    responseArea.innerHTML = marked.parse(data.response);
+                    Prism.highlightAll();
+                }
+            } catch (err) {
+                responseArea.innerHTML = '❌ Error: ' + err.message;
+            }
+            
+            document.getElementById('customQuestion').value = '';
+        }
+
+        async function clearChat() {
+            await fetch('/clear', { method: 'POST' });
+            responseArea.innerHTML = 'Chat cleared. Click "Analyze Screen" to start...';
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F1') {
+                e.preventDefault();
+                toggleFullscreen();
+            } else if (e.key === 'F2') {
+                e.preventDefault();
+                analyzeScreen();
+            } else if (e.key === 'F3') {
+                e.preventDefault();
+                showQuestionModal();
+            } else if (e.key === 'F4') {
+                e.preventDefault();
+                clearChat();
+            } else if (e.key === 'Escape') {
+                if (isFullscreen) {
+                    toggleFullscreen();
+                }
+                closeModal();
+            } else if (e.key === 'Enter' && document.getElementById('questionModal').classList.contains('active')) {
+                if (!e.shiftKey) {
+                    e.preventDefault();
+                    submitQuestion();
+                }
+            }
+        });
+
+        // Init
+        initCameras();
+        
+        fetch('/check_api_key')
+            .then(r => r.json())
+            .then(data => {
+                if (data.has_key) {
+                    document.getElementById('apiKey').placeholder = 'API key saved';
+                }
+            });
+    </script>
+</body>
+</html>
