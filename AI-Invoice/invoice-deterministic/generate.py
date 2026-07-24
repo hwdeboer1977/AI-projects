@@ -35,8 +35,8 @@ def dmy(d: date) -> str:
 
 def money(x: Decimal) -> str:
     q = x.quantize(TWO, rounding=ROUND_HALF_UP)
+    #return f"€{q:.2f}".replace(".", ",")
     return f"€{q:.2f}".replace(".", ",")
-
 
 def replace_everywhere(doc: Document, mapping: Dict[str, str]) -> None:
     for p in doc.paragraphs:
@@ -199,6 +199,8 @@ def generate(
             "{{KLANT_NAAM}}": str(inv["Klantnaam"]),
             "{{KLANT_ADRES}}": str(inv["Straat + huisnr"]),
             "{{KLANT_POSTCODE_PLAATS}}": str(inv["Postcode + Plaats"]),
+            "{{NAAM}}": str(inv.get("Naam", "") or ""),
+            "{{PERIODE}}": str(inv.get("Periode", "") or ""),
             "{{OMSCHRIJVING}}": omschrijving,
             "{{TOTAAL_EXCL}}": money(net_total),
             "{{BTW_TOTAAL}}": money(vat_total),
