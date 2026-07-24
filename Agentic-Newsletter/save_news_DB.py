@@ -4,14 +4,22 @@ from datetime import datetime
 import os
 from glob import glob
 
-# Connect to PostgreSQL
-conn = psycopg2.connect(
-    dbname="agent_db",
-    user="postgres",
-    password="Kwekebos230!",
-    host="localhost",
-    port="5432"
-)
+from dotenv import load_dotenv
+
+# Load environment variables from a .env file (git-ignored) if present.
+load_dotenv()
+
+# Connect to PostgreSQL using a connection string from the environment.
+# Set DATABASE_URL, e.g.:
+#   postgresql://postgres:<password>@localhost:5432/agent_db
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL is not set. Add it to your environment or .env file, e.g.\n"
+        "  DATABASE_URL=postgresql://postgres:<password>@localhost:5432/agent_db"
+    )
+
+conn = psycopg2.connect(DATABASE_URL)
 cur = conn.cursor()
 
 # Loop through all matching newsletter JSON files
